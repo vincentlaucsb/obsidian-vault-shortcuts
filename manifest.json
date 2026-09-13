@@ -1,0 +1,9 @@
+{
+  "id": "vault-shortcuts",
+  "name": "Vault Shortcuts",
+  "version": "0.0.1",
+  "minAppVersion": "1.13.7",
+  "description": "Create desktop shortcuts to your vault and notes.",
+  "author": "Vince",
+  "isDesktopOnly": true
+}

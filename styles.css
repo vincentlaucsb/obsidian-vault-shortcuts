@@ -1,0 +1,7 @@
+.vault-shortcuts-vault-list {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 10em;
+  margin-bottom: var(--size-4-2);
+}
