@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag, for example 0.0.1 (no v prefix)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify release version
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const tag = process.env.RELEASE_TAG;
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag ?? '')) {
+            throw new Error('Release tag must be x.y.z, without a v prefix.');
+          }
+          for (const file of ['manifest.json', 'package.json', 'package-lock.json']) {
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            if (data.version !== tag) throw new Error(file + ' version must match ' + tag);
+            if (file === 'package-lock.json' && data.packages[''].version !== tag) {
+              throw new Error('Lockfile root package version must match ' + tag);
+            }
+          }
+          NODE
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+      - name: Attach Obsidian release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for asset in main.js manifest.json styles.css; do
+            test -s "$asset"
+          done
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber
+          else
+            gh release create "$RELEASE_TAG" main.js manifest.json styles.css \
+              --verify-tag --title "$RELEASE_TAG" --generate-notes
+          fi

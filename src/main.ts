@@ -3,13 +3,24 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { ShortcutCreator } from './shortcuts/ShortcutCreator';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 import { OtherVaultModal } from './OtherVaultModal';
+import { readContextMenuOptions } from './settings';
+import type { ContextMenuOptions } from './settings';
 
 export default class VaultShortcuts extends Plugin {
   private readonly creator = new ShortcutCreator();
   private readonly startMenuCreator = new ShortcutCreator('start-menu');
   private readonly populatedMenus = new WeakSet<Menu>();
 
-  onload(): void {
+  contextMenuOptions = readContextMenuOptions(undefined);
+  private settingsSave: Promise<void> = Promise.resolve();
+
+  async onload(): Promise<void> {
+    try {
+      const data: unknown = await this.loadData();
+      this.contextMenuOptions = readContextMenuOptions(data);
+    } catch {
+      new Notice('Could not load context menu options. Using defaults.');
+    }
     this.addSettingTab(new VaultShortcutsSettings(this));
     this.addCommand({
       id: 'create-vault-shortcut',
@@ -27,28 +38,37 @@ export default class VaultShortcuts extends Plugin {
       },
     });
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
-      if (file instanceof TFile) this.addNoteMenu(menu, file);
-    }));
-    this.registerEvent(this.app.workspace.on('editor-menu', (menu, _editor, info) => {
-      if (info.file) this.addNoteMenu(menu, info.file);
+      if (file instanceof TFile) this.addFileMenu(menu, file);
     }));
   }
 
-  private addNoteMenu(menu: Menu, file: TFile): void {
-    if (file.extension.toLowerCase() !== 'md' || this.populatedMenus.has(menu)) return;
+  private addFileMenu(menu: Menu, file: TFile): void {
+    if (this.populatedMenus.has(menu)) return;
     this.populatedMenus.add(menu);
-    menu.addItem(item => item.setTitle('Create desktop shortcut').setIcon('external-link')
-      .onClick(() => this.createShortcut(file)));
-    if (Platform.isWin) {
+    if (this.contextMenuOptions.desktop) {
+      menu.addItem(item => item.setTitle('Create desktop shortcut').setIcon('external-link')
+        .onClick(() => this.createShortcut(file)));
+    }
+    if (Platform.isWin && this.contextMenuOptions.startMenu) {
       menu.addItem(item => item.setTitle('Create start menu shortcut').setIcon('external-link')
         .onClick(() => this.createShortcut(file, 'start-menu')));
     }
   }
 
+  saveContextMenuOption(key: keyof ContextMenuOptions, enabled: boolean): Promise<void> {
+    const save = this.settingsSave.then(async () => {
+      const next = { ...this.contextMenuOptions, [key]: enabled };
+      await this.saveData(next);
+      this.contextMenuOptions = next;
+    });
+    this.settingsSave = save.catch(() => {});
+    return save;
+  }
+
   async createShortcut(file?: TFile, target: ShortcutDestination = 'desktop', otherVaultName?: string): Promise<void> {
     try {
       if (file && this.app.vault.getAbstractFileByPath(file.path) !== file) {
-        throw new Error('This note no longer exists. Reopen its context menu and try again.');
+        throw new Error('This file no longer exists. Reopen its context menu and try again.');
       }
       const vaultName = otherVaultName ?? this.app.vault.getName();
       const creator = target === 'start-menu' ? this.startMenuCreator : this.creator;
@@ -95,6 +115,28 @@ class VaultShortcutsSettings extends PluginSettingTab {
             this.vaultShortcuts.createShortcut(undefined, target, name)).open();
         }));
       },
+    }, {
+      type: 'group',
+      heading: 'Context menu options',
+      items: ([
+        { key: 'desktop', name: 'Desktop shortcuts', visible: true },
+        { key: 'startMenu', name: 'Start menu shortcuts', visible: Platform.isWin },
+      ] as const).map(({ key, name, visible }) => ({
+        name,
+        visible,
+        desc: 'Show this shortcut action in file context menus.',
+        render: setting => {
+          setting.addToggle(toggle => toggle.setValue(this.vaultShortcuts.contextMenuOptions[key])
+            .onChange(async enabled => {
+              toggle.setDisabled(true);
+              try { await this.vaultShortcuts.saveContextMenuOption(key, enabled); }
+              catch {
+                toggle.setValue(this.vaultShortcuts.contextMenuOptions[key]);
+                new Notice('Could not save context menu options. Please try again.');
+              } finally { toggle.setDisabled(false); }
+            }));
+        },
+      })),
     }];
   }
 }

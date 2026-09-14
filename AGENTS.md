@@ -124,6 +124,13 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   concrete creator per OS. Resolve the OS once and delegate both creation methods.
 - Share URI encoding, filename handling, serializers and exclusive-write helpers.
   Keep UI/notices in the Obsidian layer; OS creators resolve paths and create files.
+- Persist independent Desktop and Windows Start Menu context-menu toggles with
+  loadData/saveData. Default both to enabled, validate stored booleans, and apply
+  changes to file menus only. Do not register editor-menu shortcut actions. These toggles must not disable commands
+  or settings-page creation actions.
+- File-menu actions support every TFile, including JPG/CSV attachments, while
+  excluding folders. Preserve full file extensions in URI targets. Keep the
+  existing createNoteShortcut interface for compatibility; it accepts file paths.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.
 - Other-vault shortcuts are vault-only. Discover known vault names with the
@@ -183,6 +190,12 @@ and attach `main.js`, `manifest.json`, and optional `styles.css` to the GitHub
 release. Automatic source archives alone are insufficient. Automated review errors
 must be corrected before the plugin is installable; feedback fixes require an
 incremented release. Recheck the guide when actually submitting.
+
+Workflows: checks.yml runs lint/tests/build on master pushes and pull requests.
+release.yml builds an existing x.y.z tag, validates manifest/package/lockfile
+versions, and attaches main.js, manifest.json and styles.css. Never commit the
+generated bundle. Release reruns replace existing attachments; do not move tags.
+Linux CI skips native Windows tests; run them locally on Windows before releasing.
 
 Local pre-release checklist:
 

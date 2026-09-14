@@ -13,6 +13,17 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Attachment support:** file-menu shortcuts now support all TFile entries, including
+JPG, CSV and PDF. Preserve full extensions in URIs and exclude folders. The current
+note command remains Markdown-specific. Opening behavior belongs to Obsidian and
+its installed viewers; shortcut creation does not install a viewer. This supersedes
+earlier Markdown-only file-menu scope.
+
+**Context menu options:** a native settings group contains independent Desktop
+and Windows-only Start Menu toggles, both enabled by default. Save per vault and
+apply to newly opened file context menus. Commands and settings actions
+remain available.
+
 **Vault identity:** keep vault names as the default URI target. Device-specific
 IDs are acceptable for local shortcuts, but automatic ID retrieval lacks
 first-class public API support, so do not build around undocumented `app.appId`
@@ -102,8 +113,7 @@ shortcut immediately; no vault/note chooser is needed.
 
 For a note: **right-click the note → Create desktop shortcut**. Use the file from
 that context menu, even if it is not the currently open note. Start with the file
-explorer's single-note context menu; add the same action to an editor context menu
-where the target note is unambiguous. Exclude folders and multi-file selection
+explorer's single-note context menu. Do not add editor context-menu actions. Exclude folders and multi-file selection
 from this MVP. Both paths write to the system Desktop and show a notice.
 The first implementation uses Windows `.url` files. Keep these existing commands
 as secondary entry points into the same creation logic:
@@ -379,10 +389,9 @@ vault name near the button. There is no target chooser or note-context tracking
 in settings; this supersedes the earlier proposed chooser.
 
 For notes, expose **Create desktop shortcut** in the note context menu. Use the
-specific Markdown file supplied by the menu event, not a global active-file
+specific file supplied by the menu event, not a global active-file
 lookup. A user can right-click note B while viewing note A and must get a shortcut
-to B. Revalidate the target at execution; if it was deleted, report an error. The
-editor menu uses the file attached to its view. Share the action logic and avoid
+to B. Revalidate the target at execution; if it was deleted, report an error. Share the action logic and avoid
 duplicate entries. Register menu events through the plugin's cleanup mechanism.
 No folder action, selection-to-heading action or batch export is part of v1.
 
@@ -568,7 +577,7 @@ has been performed.
 ## Implementation status (September 13, 2026)
 
 The agreed implementation is now present: native settings button, clicked-note
-file/editor context menus, both commands, the public `ShortcutCreator` facade and
+file context menus, both commands, the public `ShortcutCreator` facade and
 three OS implementations. Windows and Mac use `.url`; Linux uses a `Type=Link`
 `.desktop` file. Common helpers encode URIs, sanitize filenames and exclusively
 create files with collision suffixes. Desktop discovery uses fixed system queries.

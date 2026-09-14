@@ -1,6 +1,6 @@
 # Vault Shortcuts
 
-Create Desktop shortcuts to an Obsidian vault or Markdown note.
+Create Desktop shortcuts to an Obsidian vault or file.
 
 Windows also supports Start Menu shortcuts.
 
@@ -8,9 +8,9 @@ Windows also supports Start Menu shortcuts.
 
 - **Vault:** open Settings, select **Vault Shortcuts** in the Community plugins
   section, and click **Create shortcut**.
-- **Note:** right-click a Markdown note and select **Create desktop shortcut**.
-  The shortcut targets the clicked note, even when another note is open. The
-  action is also available from a Markdown editor's context menu.
+- **File:** right-click a vault file (including Markdown, JPG or CSV) and select **Create desktop shortcut**.
+  The shortcut targets the clicked file in the file menu, even when another
+  note is open.
 - **Windows Start Menu:** click **Create start menu shortcut** in plugin settings
   for this vault, or select that action from a note's context menu. It creates a
   `.lnk` in your configured Start Menu Programs folder. Windows controls when it
@@ -37,6 +37,13 @@ Existing files are preserved; duplicates receive
 ` (2)`, ` (3)`, etc. A notice shows the created path or explains a failure. The
 plugin does not launch the shortcut automatically. Double-click it to open the
 vault or note in Obsidian.
+
+## Context menu options
+
+In plugin settings, **Context menu options** provides separate **Desktop shortcuts**
+and **Start menu shortcuts** toggles. Both default to enabled; Start menu is shown
+only on Windows. Changes apply to newly opened file menus and persist
+in this vault. Settings-page actions and command-palette commands remain available.
 
 ## Platforms
 
@@ -113,6 +120,10 @@ Obsidian's built-in URI handler and do not require this plugin to remain enabled
 
 ## Limitations and troubleshooting
 
+File shortcuts preserve the complete extension and use Obsidian’s URI handler.
+How a file opens depends on Obsidian and any installed file-viewer plugins;
+creating a CSV shortcut does not add CSV viewing support. Folders are excluded.
+
 - Obsidian must be installed with a working `obsidian://` association. If the file
   was created but does not open Obsidian, report a launch/association issue rather
   than a file-creation failure.
@@ -146,6 +157,21 @@ URI construction and safe file creation are shared.
 Implementation lives in `src/`, with entry point `src/main.ts` and creators/helpers
 in `src/shortcuts/`. Tests and fixtures live in `tests/`. Build configuration and
 the generated `main.js` remain at the repository root, preserving installed symlinks.
+
+## Releases
+
+GitHub Actions runs lint, tests and the build for pushes to master and pull requests.
+To release, update the version in manifest.json, package.json and package-lock.json
+(including its root package entry), commit the changes, and push a matching tag
+such as 0.0.1, without a v prefix. Push the version commit to master as well, so the
+Community directory sees the correct manifest on the default branch.
+
+The Release workflow builds that tag and attaches main.js, manifest.json and
+styles.css to a GitHub release after all checks pass. Generated main.js stays out
+of source control. The workflow can also be run manually against an existing tag;
+a rerun replaces same-named release attachments. Do not move published tags; use
+a new version for changes. Linux CI skips the two native Windows integration tests;
+run npm test on Windows before a release to exercise those as well.
 
 ## License
 

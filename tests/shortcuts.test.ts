@@ -88,3 +88,13 @@ void test('Desktop validation rejects disabled Linux Desktop and invalid directo
 void test('Windows resolves an existing actual Desktop', { skip: process.platform !== 'win32' }, async () => {
   assert.ok((await stat(await getWindowsDesktop())).isDirectory());
 });
+
+void test('attachment shortcuts retain the complete file extension and encoded path', () => inTemp(async dir => {
+  for (const path of ['Photos/Truck & trailer.jpg', 'Reports/Fuel 2026.csv']) {
+    const shortcut = await writeShortcut(dir, 'url', 'Truck', path);
+    const contents = await readFile(shortcut, 'utf8');
+    const uri = new URL(contents.split('\r\n')[1].slice(4));
+    assert.equal(uri.searchParams.get('file'), path);
+    assert.ok(basename(shortcut).includes(path.split('/').pop() ?? ''));
+  }
+}));
