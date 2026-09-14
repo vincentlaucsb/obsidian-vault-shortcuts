@@ -170,12 +170,12 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   no-overwrite behavior even when multiple actions run at once. Do not read note
   contents, delete shortcuts on unload, or create shortcut-tracking databases.
 - Initial formats: Windows/Mac `.url`; Linux `.desktop` with `Type=Link` and `URL=`.
-  Windows also supports a user-requested Start Menu destination: `.lnk` files in
+  Windows also supports a user-requested Start Menu destination: `.url` files in
   the current user's configured Programs folder. Keep Desktop the default and
   show Start Menu actions only on Windows. Do not pin automatically or use the
-  all-users folder. Generate links in a private temporary directory with fixed
-  PowerShell code and environment-variable data, then publish using exclusive
-  writes. Disclose both Programs and temporary-file access in README.
+  all-users folder. Use the shared `.url` writer with the URI directly; do not
+  restore the Explorer/WScript `.lnk` wrapper. Disclose Programs-folder access.
+  Existing shortcuts are not migrated or deleted automatically.
 - End users test platforms and file issues. A maintainer Mac/Linux environment is
   not a prerequisite for experimental releases. State actual verification honestly.
 

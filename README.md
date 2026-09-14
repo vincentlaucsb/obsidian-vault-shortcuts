@@ -13,7 +13,7 @@ Windows also supports Start Menu shortcuts.
   note is open.
 - **Windows Start Menu:** click **Create start menu shortcut** in plugin settings
   for this vault, or select that action from a note's context menu. It creates a
-  `.lnk` in your configured Start Menu Programs folder. Windows controls when it
+  `.url` in your configured Start Menu Programs folder. Windows controls when it
   appears in All apps/search; pinning to Start is a separate manual Windows action.
 - **Command palette:** use **Create shortcut to this vault** or **Create shortcut
   to current note** as alternatives. No default hotkeys are assigned.
@@ -93,12 +93,14 @@ lookup commands. These use fixed code/arguments, never vault or note text as she
 code, and have bounded execution time.
 
 The Windows Start Menu action writes to your current user's Programs folder
-(usually `%APPDATA%\Microsoft\Windows\Start Menu\Programs`). A hidden PowerShell
-process uses Windows' WScript.Shell to generate a `.lnk` in a private temporary
-folder, which is removed afterward. Node publishes its contents without overwriting
-existing files. The link targets Windows Explorer with a quoted Obsidian URI;
-vault/note data is passed as environment variables, never PowerShell source.
+(usually `%APPDATA%\Microsoft\Windows\Start Menu\Programs`). PowerShell resolves
+the configured Programs folder; the shared writer creates a `.url` containing the
+Obsidian URI directly. No Explorer wrapper or temporary link generation is needed.
 It does not change Start pins or write to the all-users Start Menu.
+
+Version 0.0.2 uses `.url` for both Windows destinations, following successful
+user testing of Start Menu pinning. Existing `.lnk` shortcuts remain untouched;
+recreate them if you want the new format.
 
 Opening **Create shortcut to another vault** invokes the CLI with fixed `vaults verbose` arguments and parses
 name/path rows, ignoring recognized startup messages. On Windows it first checks
@@ -163,7 +165,7 @@ the generated `main.js` remain at the repository root, preserving installed syml
 GitHub Actions runs lint, tests and the build for pushes to master and pull requests.
 To release, update the version in manifest.json, package.json and package-lock.json
 (including its root package entry), commit the changes, and push a matching tag
-such as 0.0.1, without a v prefix. Push the version commit to master as well, so the
+such as 0.0.2, without a v prefix. Push the version commit to master as well, so the
 Community directory sees the correct manifest on the default branch.
 
 The Release workflow builds that tag and attaches main.js, manifest.json and

@@ -44,7 +44,7 @@ export async function writeShortcut(
 }
 
 export async function writeShortcutContent(
-  directory: string, extension: 'url' | 'desktop' | 'lnk', label: string, content: string | Uint8Array,
+  directory: string, extension: 'url' | 'desktop', label: string, content: string,
 ): Promise<string> {
   if (!isAbsolute(directory)) throw new Error('Shortcut destination must be an absolute path.');
   const base = sanitizeFilename(label);

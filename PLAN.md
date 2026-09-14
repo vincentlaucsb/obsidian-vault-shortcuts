@@ -55,17 +55,16 @@ and manual fallback; all 14 tests, lint and build passed.
 
 **Start Menu addition:** after verifying the existing plugin works, the user
 requested a Windows Start Menu destination. Add an explicit vault settings button
-and clicked-note menu action while retaining Desktop defaults. Use a `.lnk` in
+and clicked-note menu action while retaining Desktop defaults. Use a `.url` in
 the current user's configured Programs folder, resolved through Windows rather
-than a guessed AppData path. The link launches Explorer with the encoded URI.
+than a guessed AppData path. The file contains the encoded Obsidian URI directly.
 Keep pinning manual. No persistent destination preference or new dependencies.
-Generate with fixed PowerShell/WScript code in temporary storage and publish with
-the shared exclusive-write helper. Mac/Linux remain Desktop-only.
+Resolve the folder with fixed PowerShell code and use the shared exclusive `.url` writer. Mac/Linux remain Desktop-only.
 
 [Microsoft's Start Menu guidance](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-add-shortcuts-to-the-start-menu)
-specifies a shell link in the known Programs folder. Tests inspect actual Windows
-link contents and collision preservation in temporary folders; appearance and
-launching from Start remain end-user validation.
+originally motivated the `.lnk` approach. The user subsequently verified that a
+desktop `.url` copied to Programs can be pinned. Version 0.0.2 therefore removes
+the `.lnk` wrapper and temporary-file generation. Existing links remain untouched.
 
 Obsidian supports vault/note URIs, but creating an OS-level shortcut remains a
 manual task for the user. The proposed utility turns the current vault or note

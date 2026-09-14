@@ -5,7 +5,7 @@ import { basename, dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { buildObsidianUri } from '../src/shortcuts/uri';
 import { sanitizeFilename, serializeDesktopLink, writeShortcut } from '../src/shortcuts/files';
-import { getWindowsDesktop, validateDesktop } from '../src/shortcuts/desktop';
+import { getWindowsDesktop, getWindowsStartMenu, validateDesktop } from '../src/shortcuts/desktop';
 
 async function inTemp(callback: (directory: string) => Promise<void>): Promise<void> {
   const directory = await mkdtemp(join(tmpdir(), 'vault-shortcut-test-'));
@@ -98,3 +98,7 @@ void test('attachment shortcuts retain the complete file extension and encoded p
     assert.ok(basename(shortcut).includes(path.split('/').pop() ?? ''));
   }
 }));
+
+void test('Windows resolves the current user Start menu Programs folder', { skip: process.platform !== 'win32' }, async () => {
+  assert.ok((await stat(await getWindowsStartMenu())).isDirectory());
+});
