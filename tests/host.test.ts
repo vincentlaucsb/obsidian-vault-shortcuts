@@ -16,7 +16,7 @@ void test('mock host: clicked-note targeting, duplicate menus, stale files and O
     const fixture = resolve('tests/host-fixture.ts');
     await build({
       stdin: {
-        contents: 'import Main from "./src/main"; import { OtherVaultModal } from "./src/OtherVaultModal"; import {runScenarios} from "./tests/host-fixture"; import {runModalScenarios} from "./tests/modal-fixture"; export const run = async () => { await runScenarios(() => new Main()); await runModalScenarios(create => new OtherVaultModal({}, create)); };',
+        contents: 'import Main from "./src/main"; import { OtherVaultModal } from "./src/OtherVaultModal"; import { TagShortcutModal } from "./src/TagShortcutModal"; import {runScenarios} from "./tests/host-fixture"; import {runModalScenarios, runTagModalScenarios} from "./tests/modal-fixture"; export const run = async () => { await runScenarios(() => new Main()); await runModalScenarios(create => new OtherVaultModal({}, create)); await runTagModalScenarios(create => new TagShortcutModal({}, ["#work"], create)); };',
         resolveDir: resolve('.'), loader: 'ts',
       },
       bundle: true, platform: 'node', format: 'cjs', outfile: output,

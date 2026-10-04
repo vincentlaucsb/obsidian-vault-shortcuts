@@ -29,4 +29,8 @@ export class ShortcutCreator implements IShortcutCreator {
     if (!this.creator) throw new Error('Desktop shortcuts are unavailable on this platform.');
     return this.creator;
   }
+
+  async createTagShortcut(vaultName: string, tag: string): Promise<string> {
+    return this.getCreator().createTagShortcut(vaultName, tag);
+  }
 }

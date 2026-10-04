@@ -17,7 +17,12 @@ class TextElement {
   selectedIndex = -1;
   onchange: () => void = () => {};
   options: string[] = [];
-  createEl(_tag: string, options: { value: string; text: string }): void { this.options.push(options.value); }
+  createEl(_tag: string, options: { value: string; text: string }): TextElement {
+    this.options.push(options.value);
+    const element = new TextElement();
+    element.value = options.value; element.text = options.text;
+    return element;
+  }
   setText(text: string): void { this.text = text; }
 }
 class Content {
@@ -29,7 +34,11 @@ class Content {
   empty(): void { this.messages = []; }
 }
 export class Modal {
+  static opened: Modal[] = [];
+  constructor(readonly app: unknown = undefined) {}
   contentEl = new Content();
+  open(): void { Modal.opened.push(this); this.onOpen(); }
+  close(): void { this.onClose(); }
   setTitle(): void {}
   onOpen(): void {}
   onClose(): void {}
@@ -44,9 +53,12 @@ class Button {
   onClick(callback: () => Promise<void>): this { this.click = callback; return this; }
 }
 class Input {
+  inputEl = {};
+  value = '';
   change: (value: string) => void = () => {};
   onChange(callback: (value: string) => void): this { this.change = callback; return this; }
-  setValue(): this { return this; }
+  setValue(value: string): this { this.value = value; return this; }
+  setPlaceholder(): this { return this; }
 }
 class Dropdown extends Input {
   addOption(): this { return this; }
@@ -55,6 +67,7 @@ export class Setting {
   static buttons: Button[] = [];
   static inputs: Input[] = [];
   static dropdowns: Dropdown[] = [];
+  constructor(_container: unknown = undefined) {}
   setName(): this { return this; }
   setDesc(): this { return this; }
   clear(): this { return this; }
@@ -104,4 +117,41 @@ export async function runModalScenarios(createModal: (create: (name: string, tar
   closed.onOpen(); closed.onClose();
   await setImmediate();
   assert.equal(closed.contentEl.messages.length, 0, 'Late discovery must not update a closed modal');
+}
+
+export async function runTagModalScenarios(
+  createModal: (create: (tag: string, target: string) => Promise<boolean>) => Modal,
+): Promise<void> {
+  Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = [];
+  let calls = 0;
+  let complete: (created: boolean) => void = () => {};
+  const modal = createModal((tag, target) => {
+    calls++;
+    assert.equal(tag, '#work');
+    assert.equal(target, 'desktop');
+    return new Promise<boolean>(resolve => { complete = resolve; });
+  });
+  modal.onOpen();
+  const button = Setting.buttons[0];
+  await button.click();
+  assert.equal(calls, 0, 'A tag must be selected before creation');
+  const tagList = modal.contentEl.messages[1];
+  tagList.value = '#work';
+  tagList.onchange();
+  const pending = button.click();
+  assert.equal(button.disabled, true);
+  await button.click();
+  assert.equal(calls, 1, 'Repeated clicks during creation cannot create duplicate shortcuts');
+  complete(false);
+  await pending;
+  assert.equal(button.disabled, false, 'Failed creation allows retry with the selected tag');
+  const retry = button.click();
+  assert.equal(calls, 2);
+  modal.onClose();
+  complete(true);
+  await retry;
+  await button.click();
+  assert.equal(calls, 2, 'A closed modal cannot start another creation');
+  assert.equal(button.disabled, true, 'Late results do not update the closed modal');
+  Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = [];
 }

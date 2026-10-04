@@ -1,11 +1,16 @@
 import type { IShortcutCreator } from './IShortcutCreator';
 import { getWindowsDesktop, getWindowsStartMenu } from './desktop';
-import { writeShortcut } from './files';
+import { writeShortcut, writeTagShortcut } from './files';
 
 export type ShortcutDestination = 'desktop' | 'start-menu';
 
 export class WindowsShortcutCreator implements IShortcutCreator {
   constructor(private readonly destination: ShortcutDestination = 'desktop') {}
+
+  async createTagShortcut(vaultName: string, tag: string): Promise<string> {
+    const directory = this.destination === 'start-menu' ? await getWindowsStartMenu() : await getWindowsDesktop();
+    return writeTagShortcut(directory, 'url', vaultName, tag);
+  }
 
   async createVaultShortcut(vaultName: string): Promise<string> {
     if (this.destination === 'start-menu') {

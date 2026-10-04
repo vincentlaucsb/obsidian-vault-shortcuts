@@ -1,6 +1,6 @@
 # Vault Shortcuts
 
-Create Desktop shortcuts to an Obsidian vault or file.
+Create Desktop shortcuts to an Obsidian vault, file or tag search.
 
 Windows also supports Start Menu shortcuts.
 
@@ -17,6 +17,12 @@ Windows also supports Start Menu shortcuts.
   appears in All apps/search; pinning to Start is a separate manual Windows action.
 - **Command palette:** use **Create shortcut to this vault** or **Create shortcut
   to current note** as alternatives. No default hotkeys are assigned.
+- **Tags:** right-click a tagged Markdown note and select **Create tag shortcut**.
+  Select one of that note's inline/property tags from the scrollable list in the modal, choose
+  Desktop or Start menu on Windows, then click **Create shortcut**. Other platforms
+  use Desktop. Opening the shortcut searches this vault for the tag, including
+  nested tags according to Obsidian's normal search behavior; results update as
+  notes change. The action is hidden for notes without cached tags.
 - **Other vaults:** click **Create shortcut to another vault** in plugin settings.
   Known vaults load automatically into a selectable list. Select a vault, then
   click **Create shortcut**. Manual name/ID entry remains available. On Windows,
@@ -36,14 +42,17 @@ Files go to the system Desktop or the explicitly selected Windows Start Menu.
 Existing files are preserved; duplicates receive
 ` (2)`, ` (3)`, etc. A notice shows the created path or explains a failure. The
 plugin does not launch the shortcut automatically. Double-click it to open the
-vault or note in Obsidian.
+vault, file or tag search in Obsidian.
 
 ## Context menu options
 
 In plugin settings, **Context menu options** provides separate **Desktop shortcuts**
-and **Start menu shortcuts** toggles. Both default to enabled; Start menu is shown
+and **Start menu shortcuts** toggles, plus an independent **Tag shortcuts** toggle.
+All default to enabled; Start menu is shown
 only on Windows. Changes apply to newly opened file menus and persist
 in this vault. Settings-page actions and command-palette commands remain available.
+The Desktop and Start menu toggles hide their file actions; they do not restrict
+destinations in the tag shortcut modal.
 
 ## Platforms
 
@@ -112,10 +121,11 @@ It does not read Obsidian's internal registry, open other notes, or save
 the discovered list. Discovery runs when this dialog opens; manual entry remains
 available while it loads or if it fails.
 
+Tag selection uses Obsidian's metadata cache without reading note contents.
 The plugin does not read note contents, edit notes, overwrite existing shortcuts,
 make network requests, collect telemetry, or install/update anything. It does not
 require accounts or payment. System Desktop synchronization services may sync the
-created files; their names and URIs contain vault/note names and paths.
+created files; their names and URIs contain vault/note names, paths or tags.
 
 Disabling or uninstalling the plugin leaves created shortcuts in place. They use
 Obsidian's built-in URI handler and do not require this plugin to remain enabled.
@@ -134,6 +144,8 @@ creating a CSV shortcut does not add CSV viewing support. Folders are excluded.
   recreate it afterward. Shortcuts are not tracked or automatically repaired.
 - Note paths containing `#` are rejected because Obsidian interprets that character
   as a heading separator after decoding. No folder, heading or batch shortcuts.
+- Tag shortcuts require the core Search plugin to be enabled. Renaming a tag
+  does not update an existing shortcut; recreate it with the new tag.
 - Unavailable, disabled or unwritable Desktop folders produce an error; the plugin
   does not elevate permissions or create a replacement Desktop. System directory
   utilities must be installed and permitted.
@@ -165,7 +177,7 @@ the generated `main.js` remain at the repository root, preserving installed syml
 GitHub Actions runs lint, tests and the build for pushes to master and pull requests.
 To release, update the version in manifest.json, package.json and package-lock.json
 (including its root package entry), commit the changes, and push a matching tag
-such as 0.0.2, without a v prefix. Push the version commit to master as well, so the
+such as 0.0.3, without a v prefix. Push the version commit to master as well, so the
 Community directory sees the correct manifest on the default branch.
 
 The Release workflow builds that tag and attaches main.js, manifest.json and

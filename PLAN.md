@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated September 13, 2026. This is the consolidated plan for the feasibility
+Updated October 3, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -13,6 +13,19 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Tag shortcuts (October 3, 2026, version 0.0.3):** add one **Create tag shortcut**
+file-menu item for tagged Markdown notes. Read the clicked note's metadata cache,
+including inline and property tags, deduplicate case-insensitively and sort.
+Use a native modal with a bounded-height, scrollable tag list and Create shortcut button.
+Keep the destination inside the modal: Desktop by default, plus Start menu on
+Windows. Add an independent Tag shortcuts context-menu toggle, enabled by default;
+Desktop/Start menu toggles do not restrict tag destinations. Hide the action when
+no cached tags are available. Use public APIs, with no undocumented submenu.
+The shortcut opens vault-wide core search using `obsidian://search` and
+`query=tag%3A%23name`, retaining full nested tags. Reuse existing OS formats,
+directory resolution, serializers and no-overwrite collision handling. No note
+content reads or writes are needed. Do not publish a release as part of this change.
+
 **Attachment support:** file-menu shortcuts now support all TFile entries, including
 JPG, CSV and PDF. Preserve full extensions in URIs and exclude folders. The current
 note command remains Markdown-specific. Opening behavior belongs to Obsidian and
@@ -20,7 +33,7 @@ its installed viewers; shortcut creation does not install a viewer. This superse
 earlier Markdown-only file-menu scope.
 
 **Context menu options:** a native settings group contains independent Desktop
-and Windows-only Start Menu toggles, both enabled by default. Save per vault and
+and Windows-only Start Menu toggles, plus Tag shortcuts, all enabled by default. Save per vault and
 apply to newly opened file context menus. Commands and settings actions
 remain available.
 
@@ -409,7 +422,7 @@ filename templates, icon pickers, bulk operations, and rename tracking.
 
 ### Creator interface and OS selection
 
-Use the user's proposed architecture: `IShortcutCreator` exposes vault and note
+Use the user's proposed architecture: `IShortcutCreator` exposes vault, file and tag
 creation; one concrete implementation handles each OS. A public `ShortcutCreator`
 class implements the same interface, selects the concrete creator for the current
 OS, and forwards calls. It combines factory selection with a delegating facade.
@@ -421,6 +434,7 @@ Proposed contract (return value is the absolute created shortcut path):
 export interface IShortcutCreator {
   createVaultShortcut(vaultName: string): Promise<string>;
   createNoteShortcut(vaultName: string, notePath: string): Promise<string>;
+  createTagShortcut(vaultName: string, tag: string): Promise<string>;
 }
 ```
 
@@ -446,7 +460,7 @@ Settings / note context menu / commands
 - **`src/main.ts`:** reads Obsidian context, registers settings/menu/command actions,
   constructs one public creator, awaits operations, and shows success/error notices.
 - **`ShortcutCreator`:** selects once from `Platform.isWin`, `Platform.isMacOS`,
-  or `Platform.isLinux`; stores an `IShortcutCreator` and delegates both methods.
+  or `Platform.isLinux`; stores an `IShortcutCreator` and delegates all three methods.
   Keep the switch inside this public class, out of UI handlers. Unsupported or
   not-yet-implemented platforms produce a clear error when creation is requested,
   not a silent fallback or a plugin-load crash.
@@ -459,10 +473,10 @@ Settings / note context menu / commands
   Mac share the `.url` serializer; Linux supplies desktop-entry serialization.
   Creators choose the format and destination; the file helper only writes data.
 
-Both methods resolve only after the file is written, returning its absolute path.
+All methods resolve only after the file is written, returning its absolute path.
 Failures reject and are translated into notices by the UI layer. No notices,
 modals, protocol launching or mutable active-note state belong in OS creators.
-One private creation helper per concrete class can handle its two public methods;
+One private creation helper per concrete class can handle its public methods;
 do not duplicate encoding and collision logic across classes or introduce an
 abstract base class solely to eliminate a few delegation lines.
 
@@ -471,6 +485,7 @@ Current structure (implementation under `src/`, matching csvzall):
 ```text
 src/
   main.ts
+  TagShortcutModal.ts       Native tag picker and destination controls
   shortcuts/
     IShortcutCreator.ts
     ShortcutCreator.ts

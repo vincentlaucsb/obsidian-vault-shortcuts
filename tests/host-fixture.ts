@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 export const Platform = { isDesktopApp: true, isWin: true, isMacOS: false, isLinux: false };
 const notices: string[] = [];
 const creations: { os: string; vault: string; path?: string }[] = [];
+interface TestMetadata { tags?: { tag: string }[]; frontmatter?: { tags: string[] } }
+export function getAllTags(cache: TestMetadata): string[] {
+  return [...(cache.tags ?? []).map(entry => entry.tag), ...(cache.frontmatter?.tags ?? []).map(tag => `#${tag}`)];
+}
 export class Notice {
   constructor(message: string) { notices.push(message); }
 }
@@ -11,10 +15,11 @@ export class TFile {
 }
 export class MarkdownView { file: TFile | null = null; }
 class MenuItem {
-  callback: (() => Promise<void>) | undefined;
-  setTitle(): this { return this; }
+  title = '';
+  callback: (() => void | Promise<void>) | undefined;
+  setTitle(title: string): this { this.title = title; return this; }
   setIcon(): this { return this; }
-  onClick(callback: () => Promise<void>): this { this.callback = callback; return this; }
+  onClick(callback: () => void | Promise<void>): this { this.callback = callback; return this; }
 }
 export class Menu {
   items: MenuItem[] = [];
@@ -44,6 +49,10 @@ export class Plugin {
       getName: () => 'Test vault',
       getAbstractFileByPath(path: string): TFile | undefined { return this.files.get(path); },
     },
+    metadataCache: {
+      entries: new Map<TFile, TestMetadata>(),
+      getFileCache(file: TFile): TestMetadata | null { return this.entries.get(file) ?? null; },
+    },
   };
   events: string[] = [];
   data: unknown;
@@ -57,6 +66,7 @@ export class Plugin {
 export class PluginSettingTab {
   constructor(readonly app: Plugin['app']) {}
 }
+import { Modal, Setting } from './modal-fixture';
 export { Modal, Setting } from './modal-fixture';
 class Creator {
   constructor(private readonly os: string) {}
@@ -66,6 +76,9 @@ class Creator {
   createNoteShortcut(vault: string, path: string): Promise<string> {
     creations.push({ os: this.os, vault, path }); return Promise.resolve('Desktop/shortcut');
   }
+  createTagShortcut(vault: string, tag: string): Promise<string> {
+    creations.push({ os: this.os, vault, path: tag }); return Promise.resolve('Desktop/shortcut');
+  }
 }
 export class WindowsShortcutCreator extends Creator {
   constructor(destination = 'desktop') { super(destination === 'start-menu' ? 'windows-start-menu' : 'windows'); }
@@ -73,7 +86,7 @@ export class WindowsShortcutCreator extends Creator {
 export class MacOSShortcutCreator extends Creator { constructor() { super('mac'); } }
 export class LinuxShortcutCreator extends Creator { constructor() { super('linux'); } }
 
-export async function runScenarios(createPlugin: () => Plugin & { saveContextMenuOption(key: 'desktop' | 'startMenu', enabled: boolean): Promise<void> }): Promise<void> {
+export async function runScenarios(createPlugin: () => Plugin & { saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void> }): Promise<void> {
   const plugin = createPlugin(); await plugin.onload();
   const a = new TFile('A.md'); const b = new TFile('Folder/B.md');
   plugin.app.vault.files.set(a.path, a); plugin.app.vault.files.set(b.path, b);
@@ -117,7 +130,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
         configured.saveContextMenuOption('desktop', desktop),
         configured.saveContextMenuOption('startMenu', startMenu),
       ]);
-      assert.deepEqual(configured.data, { desktop, startMenu }, 'Both independent preferences must persist');
+      assert.deepEqual(configured.data, { desktop, startMenu, tags: true }, 'Independent preferences must persist');
       const fileMenu = new Menu();
       const editorMenu = new Menu();
       configured.app.workspace.fileHandler?.(fileMenu, a);
@@ -130,6 +143,56 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       assert.equal(restoredMenu.items.length, fileMenu.items.length, 'Preferences survive reload');
     }
   }
+  const tagged = createPlugin(); await tagged.onload();
+  tagged.app.vault.files.set(b.path, b);
+  tagged.app.workspace.active.file = a;
+  tagged.app.metadataCache.entries.set(a, { tags: [{ tag: '#active-only' }] });
+  tagged.app.metadataCache.entries.set(b, {
+    tags: [{ tag: '#work' }, { tag: '#WORK' }, { tag: '#projects/client' }],
+    frontmatter: { tags: ['todo', 'work'] },
+  });
+  await tagged.saveContextMenuOption('desktop', false);
+  await tagged.saveContextMenuOption('startMenu', false);
+  const tagMenu = new Menu();
+  tagged.app.workspace.fileHandler?.(tagMenu, b);
+  tagged.app.workspace.fileHandler?.(tagMenu, b);
+  assert.deepEqual(tagMenu.items.map(item => item.title), ['Create tag shortcut']);
+  await tagMenu.items[0].callback?.();
+  assert.equal(Modal.opened.length, 1, 'There is one modal for the tag action');
+  const modal = Modal.opened[0];
+  assert.equal(Setting.dropdowns.length, 1, 'Windows destination is inside the modal');
+  assert.equal(Setting.dropdowns[0].value, 'desktop');
+  assert.equal(Setting.buttons[0].disabled, true);
+  const tagList = modal.contentEl.messages[1];
+  assert.deepEqual(tagList.options, ['', '#projects/client', '#todo', '#work'], 'A placeholder precedes sorted and case-insensitively deduplicated tags');
+  assert.equal(tagList.selectedIndex, 0, 'The listbox has a stable selected row before the first click');
+  tagList.value = '';
+  tagList.onchange();
+  assert.equal(Setting.buttons[0].disabled, true, 'The placeholder cannot create a shortcut');
+  assert.equal(Setting.inputs.length, 0, 'Tag selection uses a list instead of a search field');
+  tagList.value = '#active-only';
+  tagList.onchange();
+  assert.equal(Setting.buttons[0].disabled, true, 'Only the clicked note tags are accepted');
+  tagList.value = '#projects/client';
+  tagList.onchange();
+  assert.equal(Setting.buttons[0].disabled, false);
+  Setting.dropdowns[0].change('start-menu');
+  await Setting.buttons[0].click();
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: '#projects/client' });
+  assert.equal(modal.contentEl.messages.length, 0, 'Successful creation closes the modal');
+  await tagged.saveContextMenuOption('tags', false);
+  const hidden = new Menu(); tagged.app.workspace.fileHandler?.(hidden, b);
+  assert.equal(hidden.items.length, 0);
+  const restored = createPlugin(); restored.data = tagged.data; await restored.onload();
+  restored.app.vault.files.set(b.path, b);
+  restored.app.metadataCache.entries.set(b, { tags: [{ tag: '#work' }] });
+  const restoredTags = new Menu(); restored.app.workspace.fileHandler?.(restoredTags, b);
+  assert.equal(restoredTags.items.length, 0, 'Tag toggle survives reload');
+  await tagged.saveContextMenuOption('tags', true);
+  tagged.app.vault.files.delete(b.path);
+  await tagMenu.items[0].callback?.();
+  assert.equal(Modal.opened.length, 1, 'Deleted notes cannot open a tag picker');
+  Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
   for (const os of ['mac', 'linux', 'unsupported']) {
     Platform.isWin = false; Platform.isMacOS = os === 'mac'; Platform.isLinux = os === 'linux';
     const next = createPlugin(); await next.onload(); next.app.vault.files.set(a.path, a);
@@ -139,5 +202,18 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
     if (os === 'unsupported') {
       assert.equal(creations.length, 0); assert.match(notices.pop() ?? '', /unavailable/);
     } else assert.deepEqual(creations.pop(), { os, vault: 'Test vault', path: a.path });
+    if (os !== 'unsupported') {
+      next.app.metadataCache.entries.set(a, { tags: [{ tag: '#work' }] });
+      const tagsOnOS = new Menu(); next.app.workspace.fileHandler?.(tagsOnOS, a);
+      assert.deepEqual(tagsOnOS.items.map(item => item.title), ['Create desktop shortcut', 'Create tag shortcut']);
+      await tagsOnOS.items[1].callback?.();
+      assert.equal(Setting.dropdowns.length, 0, 'Destination control is Windows-only');
+      const osTagList = Modal.opened[0].contentEl.messages[1];
+      osTagList.value = '#work';
+      osTagList.onchange();
+      await Setting.buttons[0].click();
+      assert.deepEqual(creations.pop(), { os, vault: 'Test vault', path: '#work' });
+      Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
+    }
   }
 }

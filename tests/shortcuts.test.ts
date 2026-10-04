@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { buildObsidianUri } from '../src/shortcuts/uri';
-import { sanitizeFilename, serializeDesktopLink, writeShortcut } from '../src/shortcuts/files';
+import { buildObsidianUri, buildTagSearchUri } from '../src/shortcuts/uri';
+import { sanitizeFilename, serializeDesktopLink, writeShortcut, writeTagShortcut } from '../src/shortcuts/files';
 import { getWindowsDesktop, getWindowsStartMenu, validateDesktop } from '../src/shortcuts/desktop';
 
 async function inTemp(callback: (directory: string) => Promise<void>): Promise<void> {
@@ -12,6 +12,32 @@ async function inTemp(callback: (directory: string) => Promise<void>): Promise<v
   try { await callback(directory); }
   finally { await rm(directory, { recursive: true, force: true }); }
 }
+
+void test('tag shortcuts preserve nested Unicode tags and use vault-wide search in both formats', () => inTemp(async dir => {
+  const vault = 'Truck & café';
+  const tag = '#projects/雪_🚚';
+  for (const format of ['url', 'desktop'] as const) {
+    const file = await writeTagShortcut(dir, format, vault, tag);
+    assert.equal(dirname(file), dir);
+    assert.match(basename(file), /Tag projects-雪_🚚/);
+    const content = await readFile(file, 'utf8');
+    const line = content.split(/\r?\n/).find(value => value.startsWith('URL='));
+    assert.ok(line);
+    const uri = new URL(line.slice(4));
+    assert.equal(uri.hostname, 'search');
+    assert.deepEqual([...uri.searchParams], [['vault', vault], ['query', `tag:${tag}`]]);
+    assert.doesNotMatch(content, /\nExec=/);
+    await writeFile(file, 'Original');
+    const collisions = await Promise.all([1, 2, 3].map(() => writeTagShortcut(dir, format, vault, tag)));
+    assert.equal(new Set(collisions).size, 3);
+    assert.equal(await readFile(file, 'utf8'), 'Original');
+  }
+  for (const invalid of ['', '#', '#two tags', '#work OR x', '#tag:foo', '#tag"', '#tag\nURL=x']) {
+    assert.throws(() => buildTagSearchUri(vault, invalid), /valid tag/);
+  }
+  assert.throws(() => buildTagSearchUri('', '#work'), /no name/);
+  await assert.rejects(writeTagShortcut('relative', 'url', vault, tag), /absolute/);
+}));
 
 void test('vault and note values round-trip without extra parameters or lines', () => inTemp(async dir => {
   const vault = 'Work & café + 100%';

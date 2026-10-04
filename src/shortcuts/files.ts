@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
-import { buildObsidianUri } from './uri';
+import { buildObsidianUri, buildTagSearchUri } from './uri';
 
 export function sanitizeFilename(label: string): string {
   let safe = Array.from(label, character => character.charCodeAt(0) < 32 ? '-' : character)
@@ -60,4 +60,13 @@ export async function writeShortcutContent(
     }
   }
   throw new Error('Too many shortcuts with this name. Rename or remove one first.');
+}
+
+export async function writeTagShortcut(
+  directory: string, format: 'url' | 'desktop', vaultName: string, tag: string,
+): Promise<string> {
+  const label = `${vaultName} - Tag ${tag.slice(1)}`;
+  const uri = buildTagSearchUri(vaultName, tag);
+  const content = format === 'url' ? serializeUrl(uri) : serializeDesktopLink(label, uri);
+  return writeShortcutContent(directory, format, label, content);
 }

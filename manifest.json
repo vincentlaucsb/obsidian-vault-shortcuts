@@ -1,9 +1,9 @@
 {
   "id": "vault-shortcuts",
   "name": "Vault Shortcuts",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "minAppVersion": "1.13.7",
-  "description": "Create desktop shortcuts to your vault and notes.",
+  "description": "Create desktop and Windows start menu shortcuts to vaults, files and tag searches.",
   "author": "Vince",
   "isDesktopOnly": true
 }

@@ -121,11 +121,11 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   TypeScript files at the root. The build must still emit root `main.js` so release
   assets and the Truck vault's existing file symlinks continue to work.
 - Implement `IShortcutCreator`, public `ShortcutCreator` factory/facade, and one
-  concrete creator per OS. Resolve the OS once and delegate both creation methods.
+  concrete creator per OS. Resolve the OS once and delegate vault, file and tag creation.
 - Share URI encoding, filename handling, serializers and exclusive-write helpers.
   Keep UI/notices in the Obsidian layer; OS creators resolve paths and create files.
-- Persist independent Desktop and Windows Start Menu context-menu toggles with
-  loadData/saveData. Default both to enabled, validate stored booleans, and apply
+- Persist independent Desktop, Windows Start Menu and Tag shortcuts context-menu toggles with
+  loadData/saveData. Default all to enabled, validate stored booleans, and apply
   changes to file menus only. Do not register editor-menu shortcut actions. These toggles must not disable commands
   or settings-page creation actions.
 - File-menu actions support every TFile, including JPG/CSV attachments, while
@@ -133,6 +133,15 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   existing createNoteShortcut interface for compatibility; it accepts file paths.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.
+- Add a single **Create tag shortcut** file-menu item for tagged Markdown notes.
+  Use the clicked note's cached inline/property tags, deduplicate case-insensitively
+  and sort. Open a native modal with a bounded-height, scrollable tag list and an explicit
+  Create shortcut button. Desktop is the default; offer a destination selector
+  with Desktop/Start menu only on Windows. The Tag shortcuts toggle hides this
+  item independently; destination toggles do not constrain the modal. Use public
+  modal and listbox APIs rather than an undocumented submenu. Tag links use the core
+  `obsidian://search` action with an encoded `tag:#name` query. Preserve nested
+  tags in the URI and reuse the shared serializers and exclusive writer.
 - Other-vault shortcuts are vault-only. Discover known vault names with the
   official CLI (`vaults verbose`) automatically when the user opens the other-vault
   dialog. Show a selectable list and enable Create shortcut after selection or

@@ -1,8 +1,9 @@
-import { MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile } from 'obsidian';
+import { getAllTags, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { ShortcutCreator } from './shortcuts/ShortcutCreator';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 import { OtherVaultModal } from './OtherVaultModal';
+import { TagShortcutModal } from './TagShortcutModal';
 import { readContextMenuOptions } from './settings';
 import type { ContextMenuOptions } from './settings';
 
@@ -52,6 +53,39 @@ export default class VaultShortcuts extends Plugin {
     if (Platform.isWin && this.contextMenuOptions.startMenu) {
       menu.addItem(item => item.setTitle('Create start menu shortcut').setIcon('external-link')
         .onClick(() => this.createShortcut(file, 'start-menu')));
+    }
+    if (this.contextMenuOptions.tags && this.getNoteTags(file).length) {
+      menu.addItem(item => item.setTitle('Create tag shortcut').setIcon('tags')
+        .onClick(() => {
+          const tags = this.getNoteTags(file);
+          if (!tags.length) {
+            new Notice('This note has no available tags. Reopen its context menu and try again.');
+            return;
+          }
+          new TagShortcutModal(this.app, tags, (tag, target) => this.createTagShortcut(tag, target)).open();
+        }));
+    }
+  }
+
+  private getNoteTags(file: TFile): string[] {
+    if (file.extension.toLowerCase() !== 'md' || this.app.vault.getAbstractFileByPath(file.path) !== file) return [];
+    const cache = this.app.metadataCache.getFileCache(file);
+    const tags = cache ? getAllTags(cache) ?? [] : [];
+    const unique = new Map<string, string>();
+    for (const tag of tags) if (!unique.has(tag.toLowerCase())) unique.set(tag.toLowerCase(), tag);
+    return [...unique.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  private async createTagShortcut(tag: string, target: ShortcutDestination): Promise<boolean> {
+    try {
+      const creator = target === 'start-menu' ? this.startMenuCreator : this.creator;
+      const destination = await creator.createTagShortcut(this.app.vault.getName(), tag);
+      new Notice(`Shortcut created: ${destination}`, 7000);
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      new Notice(`Could not create shortcut: ${message}`, 10000);
+      return false;
     }
   }
 
@@ -121,6 +155,7 @@ class VaultShortcutsSettings extends PluginSettingTab {
       items: ([
         { key: 'desktop', name: 'Desktop shortcuts', visible: true },
         { key: 'startMenu', name: 'Start menu shortcuts', visible: Platform.isWin },
+        { key: 'tags', name: 'Tag shortcuts', visible: true },
       ] as const).map(({ key, name, visible }) => ({
         name,
         visible,
