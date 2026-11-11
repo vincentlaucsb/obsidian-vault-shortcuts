@@ -146,7 +146,10 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   Create picker inputs and conversion elements in the control's owning document;
   detached Settings windows must not use main-window global DOM helpers.
 - 1.0.0 URI builder: use a read-only live URI preview with Copy and structured
-  controls. In a note-origin dialog, fix both vault and clicked file, including
+  controls. Keep the preview fixed above General and Advanced tabs. General holds
+  shortcut name, destination and icon options; Advanced holds action/target and
+  URI behavior controls. Preserve edits when switching tabs and keep validation,
+  launch effects and creation controls visible. In a note-origin dialog, fix both vault and clicked file, including
   for append/prepend/replace actions. Enforce context in the request model rather
   than relying only on disabled UI. Generate writing URIs without directly editing
   notes or reading clipboard content during shortcut creation. The detailed draft

@@ -5,6 +5,9 @@ this design. Publishing and merging remain outside the current request.
 
 ## Preview images
 
+The images below preserve the original approved single-page concept. The later
+tabbed revision described under Dialog composition supersedes their layout.
+
 Notebook context:
 
 ![Notebook options preview](images/uri-options-notebook.png)
@@ -16,8 +19,8 @@ Fixed-note context:
 ## Decisions and reference
 
 - Target 1.0.0 with broad coverage of documented core Obsidian URI actions.
-- Use the user's two-page sketch: live URI at the top, shortcut destination/icon,
-  action selector, then relevant action fields.
+- Use the user's two-page sketch and subsequent tabbed revision: fixed live URI
+  at the top, General for shortcut destination/icon, Advanced for URI controls.
 - The user confirmed a read-only live URI preview with Copy and structured
   controls, rather than editing/pasting arbitrary URIs.
 - The user confirmed writing actions in a note-context dialog. Vault and file
@@ -41,20 +44,23 @@ do not rely on the 1.15.1 beta's heading-only fallback.
 
 1. Title: Create shortcut with options. Show the originating vault/file below it.
 2. Read-only, wrapping URI preview and Copy URI action. Updates immediately.
-3. Shortcut name: editable display filename, independent of URI file targets;
+3. General and Advanced tabs, with accessible keyboard navigation. Open General
+   initially and preserve every draft when switching tabs.
+4. General — Shortcut name: editable display filename, independent of URI file targets;
    auto-suggest from action/target until the user edits it.
-4. Destination: Desktop; Start menu additionally on Windows.
-5. Icon on Windows: mutually exclusive vault default, custom image, Obsidian icon.
+5. General — Destination: Desktop; Start menu additionally on Windows.
+6. General — Icon on Windows: mutually exclusive vault default, custom image, Obsidian icon.
    Choosing custom reveals the existing picker and preview. Other-vault targets
    retain the standard-icon default, rather than inheriting Recipes' icon.
-6. Action selector. Friendly labels with optional core action names in help text.
-7. Target and action fields. Hide irrelevant field groups; retain disabled
+7. Advanced — Action selector. Friendly labels with optional core action names in help text.
+8. Advanced — Target and action fields. Hide irrelevant field groups; retain disabled
    identity fields and short explanations where the user should see the constraint.
-8. Collapsed advanced integration fields where supported.
-9. Plain-language effect at launch, validation, Cancel and Create shortcut.
+9. Advanced — Collapsed callback fields where supported.
+10. Shared plain-language effect at launch, validation, Cancel and Create shortcut.
 
-Production dialog: bounded height, scrollable content and accessible footer. Keep
-URI preview near the top and creation controls reachable at narrow widths.
+Production dialog: bounded height with only the active tab's content scrolling.
+Keep URI preview and Copy fixed above the tabs; keep launch effect, validation and
+creation controls visible below them, including when Advanced is hidden.
 Selecting an action should preserve that action's draft values, but serialization
 must use only active fields. Hidden state never leaks into a different action.
 

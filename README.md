@@ -8,7 +8,10 @@ Windows also supports Start Menu shortcuts.
 
 Choose **Create shortcut with options…** in plugin settings or a file's context
 menu. The dialog shows a live, read-only URI preview with **Copy URI**, an editable
-shortcut filename, destination, and Windows icon controls. The filename does not
+shortcut filename, destination, and Windows icon controls in the **General** tab.
+The **Advanced** tab contains the action, target and URI behavior controls. The
+preview and Copy stay fixed above both tabs, and switching tabs preserves edits.
+The filename does not
 change the target. Creating a shortcut never launches it.
 
 The notebook dialog supports opening vaults/files (including headings or blocks),

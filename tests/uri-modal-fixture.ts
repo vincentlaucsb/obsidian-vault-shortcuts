@@ -24,7 +24,11 @@ export class Element {
   removed = false;
   open = false;
   checked = false;
+  id = '';
+  tabIndex = 0;
+  scrollTop = 0;
   onchange: () => void = () => {};
+  onkeydown: (event: { key: string; preventDefault: () => void }) => void = () => {};
   selectionStart: number | null = null;
   selectionEnd: number | null = null;
   readonly attributes = new Map<string, string>();
@@ -32,6 +36,7 @@ export class Element {
   readonly classList = { add: (): void => {}, remove: (): void => {} };
   constructor(readonly tag = 'div', readonly parent?: Element) {}
   get isConnected(): boolean { return !this.removed && (this.parent?.isConnected ?? true); }
+  get isVisible(): boolean { return this.isConnected && !this.hidden && (this.parent?.isVisible ?? true); }
   createEl(tag: string, options?: { text?: string; value?: string; attr?: Record<string, string> }): Element {
     const element = new Element(tag, this);
     element.textContent = options?.text ?? '';
@@ -100,7 +105,8 @@ export class Button {
   text = '';
   disabled = false;
   click: () => void | Promise<void> = () => {};
-  readonly buttonEl = new Element('button');
+  readonly buttonEl: Element;
+  constructor(parent: Element) { this.buttonEl = parent.createEl('button'); }
   setButtonText(text: string): this { this.text = text; return this; }
   setDisabled(value: boolean): this { this.disabled = value; return this; }
   setCta(): this { return this; }
@@ -131,7 +137,7 @@ export class Setting {
   addTextArea(callback: (input: Input) => void): this { return this.addText(callback); }
   addDropdown(callback: (input: Dropdown) => void): this { const input = new Dropdown(); this.dropdowns.push(input); callback(input); return this; }
   addToggle(callback: (input: Toggle) => void): this { const input = new Toggle(); this.toggles.push(input); callback(input); return this; }
-  addButton(callback: (input: Button) => void): this { const input = new Button(); this.buttons.push(input); callback(input); return this; }
+  addButton(callback: (input: Button) => void): this { const input = new Button(this.controlEl); this.buttons.push(input); callback(input); return this; }
 }
 
 export interface IconBoundary { container: Element; initial: IconSelection; defaultPath?: string; busy: boolean; select: (value: IconSelection) => Promise<void> }

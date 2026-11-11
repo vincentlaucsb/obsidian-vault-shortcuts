@@ -67,17 +67,60 @@ export class ShortcutOptionsModal extends Modal {
         if (live()) new Notice('URI copied.');
       } catch (error: unknown) { if (live()) new Notice(`Could not copy URI: ${error instanceof Error ? error.message : String(error)}`); }
     }));
-    new Setting(this.contentEl).setName('Shortcut name').setDesc('Display filename only; the URI target stays independent.').addText(input => {
+    const tabBar = new Setting(this.contentEl).setClass('vault-shortcuts-uri-tabs');
+    tabBar.settingEl.setAttribute('role', 'tablist');
+    tabBar.settingEl.setAttribute('aria-label', 'Shortcut options');
+    const panels = this.contentEl.createDiv({ cls: 'vault-shortcuts-uri-panels' });
+    const generalPanel = panels.createDiv();
+    const advancedPanel = panels.createDiv();
+    const tabGroup = `vault-shortcuts-tabs-${++nextDialog}`;
+    const tabs: HTMLButtonElement[] = [];
+    const selectTab = (selected: number, focus = false): void => {
+      if (!live()) return;
+      for (const [index, tab] of tabs.entries()) {
+        const active = index === selected;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      }
+      generalPanel.hidden = selected !== 0;
+      advancedPanel.hidden = selected !== 1;
+      panels.scrollTop = 0;
+      if (focus) tabs[selected]?.focus();
+    };
+    for (const [index, [label, panel]] of ([['General', generalPanel], ['Advanced', advancedPanel]] as const).entries()) {
+      const tabId = `${tabGroup}-${index}`;
+      panel.id = `${tabId}-panel`;
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', tabId);
+      panel.tabIndex = 0;
+      tabBar.addButton(button => {
+        const tab = button.buttonEl;
+        tabs.push(tab);
+        tab.id = tabId;
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-controls', panel.id);
+        button.setButtonText(label).onClick(() => selectTab(index));
+        tab.onkeydown = event => {
+          const next = event.key === 'ArrowRight' || event.key === 'ArrowLeft' ? (index + 1) % 2 :
+            event.key === 'Home' ? 0 : event.key === 'End' ? 1 : undefined;
+          if (next === undefined) return;
+          event.preventDefault();
+          selectTab(next, true);
+        };
+      });
+    }
+    selectTab(0);
+    new Setting(generalPanel).setName('Shortcut name').setDesc('Display filename only; the URI target stays independent.').addText(input => {
       nameInput = input;
       input.inputEl.setAttribute('data-uri-field', 'label');
       input.onChange(value => { nameEdited = true; label = value; refresh(); });
     });
-    if (Platform.isWin) new Setting(this.contentEl).setName('Destination').addDropdown(dropdown => dropdown
+    if (Platform.isWin) new Setting(generalPanel).setName('Destination').addDropdown(dropdown => dropdown
       .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue(target)
       .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
     if (Platform.isWin) {
-      const setting = new Setting(this.contentEl).setName('Shortcut icon');
-      const custom = this.contentEl.createDiv();
+      const setting = new Setting(generalPanel).setName('Shortcut icon');
+      const custom = generalPanel.createDiv();
       const group = `vault-shortcuts-icon-${++nextDialog}`;
       let customPath = icon.mode === 'custom' ? icon.path : undefined;
       let mode: 'default' | 'custom' | 'standard' = icon.mode;
@@ -108,10 +151,10 @@ export class ShortcutOptionsModal extends Modal {
         refresh();
         return Promise.resolve();
       }, undefined, false);
-      this.contentEl.createEl('p', { cls: 'vault-shortcuts-icon-status', text: 'Other-vault targets use the Obsidian icon unless you choose a custom image.' });
+      generalPanel.createEl('p', { cls: 'vault-shortcuts-icon-status', text: 'Other-vault targets use the Obsidian icon unless you choose a custom image.' });
       validateIcon = () => mode === 'custom' && !customPath ? 'Choose an image for the custom icon.' : undefined;
     }
-    new Setting(this.contentEl).setName('Action').addDropdown(dropdown => {
+    new Setting(advancedPanel).setName('Action').addDropdown(dropdown => {
       for (const item of allowed) dropdown.addOption(item, ACTION_LABELS[item]);
       dropdown.setValue(action).onChange(value => {
         const next = allowed.find(item => item === value);
@@ -123,8 +166,8 @@ export class ShortcutOptionsModal extends Modal {
       });
       dropdown.selectEl.setAttribute('data-uri-field', 'action');
     });
-    if (bound) this.contentEl.createEl('p', { text: context.markdown ? 'Vault and file stay fixed to the clicked note for both navigation and writing.' : 'Attachments support opening only. Vault and file stay fixed.', cls: 'vault-shortcuts-icon-status' });
-    const fields = this.contentEl.createDiv({ cls: 'vault-shortcuts-uri-fields' });
+    if (bound) advancedPanel.createEl('p', { text: context.markdown ? 'Vault and file stay fixed to the clicked note for both navigation and writing.' : 'Attachments support opening only. Vault and file stay fixed.', cls: 'vault-shortcuts-icon-status' });
+    const fields = advancedPanel.createDiv({ cls: 'vault-shortcuts-uri-fields' });
     const effect = this.contentEl.createEl('p', { cls: 'vault-shortcuts-uri-effect', attr: { 'aria-live': 'polite' } });
     const validation = this.contentEl.createEl('p', { cls: 'vault-shortcuts-uri-validation', attr: { role: 'status', 'aria-live': 'polite' } });
     const footer = new Setting(this.contentEl).setClass('vault-shortcuts-uri-footer');
@@ -304,7 +347,7 @@ export class ShortcutOptionsModal extends Modal {
       });
       if (isWrite || action === 'hook-get-address') {
         const advanced = fields.createEl('details');
-        advanced.createEl('summary', { text: 'Advanced: callbacks' });
+        advanced.createEl('summary', { text: 'Callbacks' });
         advanced.createEl('p', { text: 'The callback app may receive note information. Obsidian controls callback permissions.', cls: 'vault-shortcuts-icon-status' });
         text(advanced, 'x-success', 'On success', active.xSuccess, value => { active.xSuccess = value; });
         if (action === 'hook-get-address') text(advanced, 'x-error', 'On error', active.xError, value => { active.xError = value; });
