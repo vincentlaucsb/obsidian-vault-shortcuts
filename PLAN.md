@@ -54,6 +54,12 @@ standard-icon files retain their encoding. Live image-picker, Windows display an
 double-click testing remain part of end-user verification; native parsing checks
 do not establish that complete UI flow.
 
+Detached Settings picker repair: create the file input inside the control's own
+document and keep conversion elements in that same window. Global DOM helpers
+can use the main vault window and fail to open a picker from detached Settings.
+The repaired native dialog opening and cancellation were verified in Recipes on
+Windows; full image selection and shortcut launching remain manual test items.
+
 **Tag shortcuts (October 3, 2026, version 0.0.3):** add one **Create tag shortcut**
 file-menu item for tagged Markdown notes. Read the clicked note's metadata cache,
 including inline and property tags, deduplicate case-insensitively and sort.

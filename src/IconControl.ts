@@ -12,7 +12,7 @@ export async function readIcon(path: string): Promise<Buffer> {
   return data;
 }
 
-async function importImage(file: File): Promise<string> {
+async function importImage(file: File, workspace: HTMLElement): Promise<string> {
   if (!/\.(png|jpe?g|ico)$/i.test(file.name)) throw new Error('Choose a PNG, JPEG or ICO image.');
   if (file.size > MAX_IMAGE_BYTES) throw new Error('Choose an image smaller than 20 MB.');
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -24,7 +24,7 @@ async function importImage(file: File): Promise<string> {
   if (png && bytes.length >= 24 && bytes.readUInt32BE(16) * bytes.readUInt32BE(20) > 40_000_000) {
     throw new Error('Choose an image with at most 40 million pixels.');
   }
-  const image = createEl('img');
+  const image = workspace.createEl('img');
   image.src = `data:image/${ico ? 'x-icon' : png ? 'png' : 'jpeg'};base64,${bytes.toString('base64')}`;
   try { await image.decode(); }
   catch { throw new Error('Could not decode this image. Choose another PNG, JPEG or ICO.'); }
@@ -33,7 +33,7 @@ async function importImage(file: File): Promise<string> {
   }
   if (ico) return storeIcon(bytes);
   const frames = ICON_SIZES.map(size => {
-    const canvas = createEl('canvas');
+    const canvas = workspace.createEl('canvas');
     canvas.width = size; canvas.height = size;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Image conversion is unavailable. Try an ICO file.');
@@ -54,6 +54,10 @@ export function addIconControl(
   let busy = false;
   let revision = 0;
   const setting = new Setting(container).setName('Shortcut icon');
+  // The input must belong to the window receiving the user's click. Global
+  // createEl can use the main vault document when Settings is in a popout.
+  const input = setting.controlEl.createEl('input', { type: 'file', attr: { accept: '.png,.jpg,.jpeg,.ico' } });
+  input.hidden = true;
   const preview = setting.controlEl.createEl('img', { cls: 'vault-shortcuts-icon-preview', attr: { alt: 'Selected shortcut icon' } });
   const status = container.createEl('p', { cls: 'vault-shortcuts-icon-status' });
   const showPreview = async (): Promise<void> => {
@@ -78,19 +82,23 @@ export function addIconControl(
   };
   setting.addButton(button => button.setButtonText('Choose image…').onClick(() => {
     if (busy) return;
-    const input = createEl('input');
-    input.type = 'file'; input.accept = '.png,.jpg,.jpeg,.ico';
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file || !container.isConnected) return;
       busy = true; button.setDisabled(true);
-      void importImage(file).then(async path => {
+      const workspace = container.createDiv();
+      workspace.hidden = true;
+      void importImage(file, workspace).then(async path => {
         if (container.isConnected) await apply({ mode: 'custom', path });
       }).catch((error: unknown) => {
         if (container.isConnected) new Notice(`Could not import icon: ${error instanceof Error ? error.message : String(error)}`);
-      }).finally(() => { busy = false; button.setDisabled(false); });
+      }).finally(() => { workspace.remove(); busy = false; button.setDisabled(false); });
     };
-    input.click();
+    input.value = '';
+    try { input.click(); }
+    catch (error: unknown) {
+      new Notice(`Could not open image picker: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }));
   const reset = (next: IconSelection): void => {
     if (busy) return;

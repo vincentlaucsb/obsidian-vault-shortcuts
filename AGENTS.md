@@ -141,6 +141,8 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   distinguish vault default, custom image and the standard Obsidian icon.
   Other-vault shortcuts default to the Obsidian icon with an optional override,
   without automatically inheriting the current vault's custom icon.
+  Create picker inputs and conversion elements in the control's owning document;
+  detached Settings windows must not use main-window global DOM helpers.
 - Keep Windows `.url` shortcuts with optional icon-file/index fields. Convert images
   locally to multi-resolution ICO, preserving transparency and aspect ratio. Keep
   immutable, content-based icon copies outside the vault and plugin directory;
