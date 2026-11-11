@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated November 10, 2026. This is the consolidated plan for the feasibility
+Updated November 11, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -59,6 +59,15 @@ document and keep conversion elements in that same window. Global DOM helpers
 can use the main vault window and fail to open a picker from detached Settings.
 The repaired native dialog opening and cancellation were verified in Recipes on
 Windows; full image selection and shortcut launching remain manual test items.
+
+**UI verification rules (November 11, 2026):** AGENTS.md now requires DOM ownership
+through the receiving container, connected file inputs opened synchronously from
+the user action, and cleanup of temporary conversion elements. Regression tests
+exercise the production control and mock external boundaries. Verify native UI
+interactions in the available Obsidian host, including detached windows when
+supported, and report live checks separately from automated coverage. Keep these
+checks focused on the changed behavior; the experimental-platform testing policy
+does not require a broad maintainer OS matrix.
 
 **Tag shortcuts (October 3, 2026, version 0.0.3):** add one **Create tag shortcut**
 file-menu item for tagged Markdown notes. Read the clicked note's metadata cache,

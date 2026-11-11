@@ -210,6 +210,28 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 - End users test platforms and file issues. A maintainer Mac/Linux environment is
   not a prerequisite for experimental releases. State actual verification honestly.
 
+### DOM ownership and native controls
+
+- Create interactive DOM elements through their owning container. Keep file
+  inputs connected to that document and open them synchronously from the user
+  action. Avoid global DOM factories for controls used in detached windows.
+- Keep temporary image/canvas elements in the same owning document and remove
+  them after success or failure.
+
+### UI verification
+
+- Regression tests must exercise the production control responsible for the
+  behavior being tested. Mock external boundaries such as storage or OS queries,
+  rather than replacing the control itself.
+- For controls that launch native UI, verify the actual interaction in the
+  available Obsidian host before declaring it working. For a file picker, verify
+  that clicking opens the dialog and cancellation preserves the selection.
+- When settings or modals support detached windows, include that window context
+  in focused verification of new DOM interactions.
+- Report automated coverage and live verification separately. Type checking,
+  lint, mocked-host tests and native file-format tests do not establish that an
+  Obsidian button works.
+
 ## Build and submission workflow
 
 Source: [Current official submission guide](https://docs.obsidian.md/plugins/releasing/submit-plugin).
