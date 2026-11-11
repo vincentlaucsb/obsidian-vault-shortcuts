@@ -133,6 +133,26 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   existing createNoteShortcut interface for compatibility; it accepts file paths.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.
+- Windows custom icons (issue #1, version 0.1.0): preserve immediate creation with the
+  vault default and add **Create shortcut with options…** for explicit overrides.
+  This dialog is the future home for more Obsidian URI options; do not implement
+  broader URI support as part of custom icons. Reuse the image picker/preview in
+  settings and creation, tag and other-vault dialogs. Accept PNG, JPEG and ICO;
+  distinguish vault default, custom image and the standard Obsidian icon.
+  Other-vault shortcuts default to the Obsidian icon with an optional override,
+  without automatically inheriting the current vault's custom icon.
+- Keep Windows `.url` shortcuts with optional icon-file/index fields. Convert images
+  locally to multi-resolution ICO, preserving transparency and aspect ratio. Keep
+  immutable, content-based icon copies outside the vault and plugin directory;
+  disclose their device-local storage and retention after uninstall. Handle missing
+  assets with an explanation and reselection or standard-icon creation. Do not
+  automatically delete retained icons or alter existing shortcuts when defaults
+  change. Keep image processing separate from typed creator contracts and shared
+  writing helpers; validate imports/paths and preserve selection on cancellation.
+  Verify actual Windows Desktop/Start menu icon display and launching as well as
+  focused automated checks when implementing this feature.
+  Write custom-icon `.url` files as UTF-16LE with a BOM so Windows preserves
+  Unicode icon paths; retain existing encoding for standard-icon shortcuts.
 - Add a single **Create tag shortcut** file-menu item for tagged Markdown notes.
   Use the clicked note's cached inline/property tags, deduplicate case-insensitively
   and sort. Open a native modal with a bounded-height, scrollable tag list and an explicit

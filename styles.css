@@ -17,3 +17,13 @@
   overflow-y: auto;
   margin-bottom: var(--size-4-2);
 }
+.vault-shortcuts-icon-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.vault-shortcuts-icon-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}

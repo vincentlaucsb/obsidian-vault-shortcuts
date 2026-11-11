@@ -51,8 +51,36 @@ and **Start menu shortcuts** toggles, plus an independent **Tag shortcuts** togg
 All default to enabled; Start menu is shown
 only on Windows. Changes apply to newly opened file menus and persist
 in this vault. Settings-page actions and command-palette commands remain available.
-The Desktop and Start menu toggles hide their file actions; they do not restrict
-destinations in the tag shortcut modal.
+The Desktop and Start menu toggles hide their file actions. The options action is
+shown when either destination action is enabled; these toggles do not restrict
+destinations inside shortcut dialogs.
+
+## Windows custom icons
+
+In plugin settings, **Default shortcut icon** lets you choose a PNG, JPG/JPEG or
+ICO image for new shortcuts in this vault. A preview shows the selected image.
+Existing quick creation actions use that default immediately; changing it does
+not update existing shortcuts. Recreate a shortcut to change its icon.
+
+For a vault, choose **Create shortcut with options…** in plugin settings. For a
+file, choose that action in its context menu. The dialog lets you choose Desktop
+or Start menu and override the icon for that shortcut. **Use default** restores
+the current vault default; **Use Obsidian icon** creates a standard icon even when
+the vault has a custom default. The tag dialog includes the same controls.
+Other-vault shortcuts start with the Obsidian icon and allow a custom image without
+inheriting this vault's default. Canceling the image picker keeps the selection.
+
+Images are converted locally to ICO with 16, 32, 48 and 256 pixel versions,
+preserving transparency and fitting rectangular images without stretching.
+Imports are limited to 20 MB; PNG/JPEG images must have at most 40 million pixels.
+If an icon is missing on this computer, choose the image again or select **Use
+Obsidian icon** in the options dialog. Settings can sync between computers, but
+the imported icon files are local to each Windows user account.
+
+Custom icons affect newly created Windows Desktop and Start menu `.url` shortcuts.
+macOS and Linux creation behavior is unchanged. Windows controls icon caching and
+Start menu presentation; actual appearance and launch behavior should be checked
+on the testing computer.
 
 ## Platforms
 
@@ -107,6 +135,17 @@ the configured Programs folder; the shared writer creates a `.url` containing th
 Obsidian URI directly. No Explorer wrapper or temporary link generation is needed.
 It does not change Start pins or write to the all-users Start Menu.
 
+Choosing an image reads that selected file and stores a durable ICO copy under
+`%LOCALAPPDATA%\VaultShortcuts\Icons\<content-hash>.ico`, outside the vault and
+plugin installation. Identical imported icons reuse the same asset; different
+images receive immutable filenames. Shortcuts reference this local copy so moving
+or deleting the source image, disabling the plugin, or uninstalling it leaves their
+icons available. Icon files are deliberately retained after uninstall and are not
+automatically cleaned up, because existing shortcuts may still reference them.
+Deleting that directory manually removes the custom icons from those shortcuts.
+Preview and shortcut creation also read the selected local ICO. No online image
+conversion, account or network service is used.
+
 Version 0.0.2 uses `.url` for both Windows destinations, following successful
 user testing of Start Menu pinning. Existing `.lnk` shortcuts remain untouched;
 recreate them if you want the new format.
@@ -159,7 +198,7 @@ For an issue report, include OS/Obsidian/plugin versions, which action you used,
 the error notice, whether creation or launching failed, whether Obsidian was
 already running, and whether Desktop is redirected/synced. Include the default
 browser if it affects URI routing. Redact private names and paths from examples.
-A real issue-tracker link will be added when the repository is published.
+Report problems in the [issue tracker](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues).
 
 ## Development
 

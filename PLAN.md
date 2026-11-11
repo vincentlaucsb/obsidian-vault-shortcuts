@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated October 3, 2026. This is the consolidated plan for the feasibility
+Updated November 10, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -12,6 +12,47 @@ and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**Windows custom icons and creation options (November 10, 2026, version 0.1.0):**
+The user agreed to [issue #1](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues/1)
+with the following refinements. Preserve immediate creation through existing
+actions, using the current vault's default icon. Add an explicit **Create shortcut
+with options…** action for per-shortcut customization. This dialog will also be
+the place for additional Obsidian URI options later; broader URI support is future
+work, not part of the icon feature. Keep the current clicked-file targeting and
+Desktop default, with Start menu available on Windows.
+
+Provide a reusable **Choose image…** control accepting PNG, JPEG and ICO, with a
+preview, in settings and the creation, tag and other-vault dialogs. For current-vault
+shortcuts, distinguish **Use vault default**, **Choose image…**, and **Use Obsidian
+icon**; resetting an override restores the vault default. Other-vault shortcuts
+start with the Obsidian icon and allow an explicit override, without automatically
+inheriting the current vault's custom icon. Default changes affect new shortcuts
+only. Editing or migrating existing shortcuts remains out of scope.
+
+Retain Windows `.url` files, adding optional `IconFile` and `IconIndex=0` fields.
+Convert images locally to real multi-resolution ICO files, preserving transparency
+and fitting rectangular images without distortion. Store immutable, content-based
+copies in a per-user local directory outside the vault and plugin installation so
+shortcuts survive deletion of the source image and plugin removal. Treat assets as
+device-local: if settings arrive on a computer without the referenced icon, explain
+the missing asset and allow reselection or creation with the standard icon. Document
+the storage location and retention; do not automatically clean up assets that may
+still be referenced by shortcuts.
+
+Keep image selection/conversion separate from shortcut writing and pass optional,
+typed icon information through the existing creator interface/facade. Validate
+imports and serialized paths, preserve selection on cancellation, and report useful
+errors. Preserve exclusive writes and existing no-custom-icon behavior. First verify
+a generated multi-resolution ICO on Windows Desktop and Start menu, including a
+Unicode path, then build the reusable UI. Add focused automated coverage for the
+serializer, conversion and durable storage, and verify actual Windows icon display
+and shortcut launching. The implementation and regression coverage are present.
+Custom-icon `.url` files use UTF-16LE with a BOM because native Windows shortcut
+parsing misreads UTF-8 icon paths outside the active ANSI code page. Existing
+standard-icon files retain their encoding. Live image-picker, Windows display and
+double-click testing remain part of end-user verification; native parsing checks
+do not establish that complete UI flow.
 
 **Tag shortcuts (October 3, 2026, version 0.0.3):** add one **Create tag shortcut**
 file-menu item for tagged Markdown notes. Read the clicked note's metadata cache,

@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import type { IconSelection } from '../src/IconControl';
+import type { ShortcutDestination } from '../src/shortcuts/WindowsShortcutCreator';
+import type { ShortcutOptions } from '../src/shortcuts/IShortcutCreator';
+import { iconControls } from './icon-control-fixture';
 
 export const Platform = { isDesktopApp: true, isWin: true, isMacOS: false, isLinux: false };
 const notices: string[] = [];
-const creations: { os: string; vault: string; path?: string }[] = [];
+const creations: { os: string; vault: string; path?: string; iconPath?: string }[] = [];
 interface TestMetadata { tags?: { tag: string }[]; frontmatter?: { tags: string[] } }
 export function getAllTags(cache: TestMetadata): string[] {
   return [...(cache.tags ?? []).map(entry => entry.tag), ...(cache.frontmatter?.tags ?? []).map(tag => `#${tag}`)];
@@ -70,14 +74,14 @@ import { Modal, Setting } from './modal-fixture';
 export { Modal, Setting } from './modal-fixture';
 class Creator {
   constructor(private readonly os: string) {}
-  createVaultShortcut(vault: string): Promise<string> {
-    creations.push({ os: this.os, vault }); return Promise.resolve('Desktop/shortcut');
+  createVaultShortcut(vault: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
-  createNoteShortcut(vault: string, path: string): Promise<string> {
-    creations.push({ os: this.os, vault, path }); return Promise.resolve('Desktop/shortcut');
+  createNoteShortcut(vault: string, path: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, path, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
-  createTagShortcut(vault: string, tag: string): Promise<string> {
-    creations.push({ os: this.os, vault, path: tag }); return Promise.resolve('Desktop/shortcut');
+  createTagShortcut(vault: string, tag: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, path: tag, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
 }
 export class WindowsShortcutCreator extends Creator {
@@ -86,7 +90,14 @@ export class WindowsShortcutCreator extends Creator {
 export class MacOSShortcutCreator extends Creator { constructor() { super('mac'); } }
 export class LinuxShortcutCreator extends Creator { constructor() { super('linux'); } }
 
-export async function runScenarios(createPlugin: () => Plugin & { saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void> }): Promise<void> {
+interface TestPlugin extends Plugin {
+  defaultIcon: string | undefined;
+  saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void>;
+  saveDefaultIcon(selection: IconSelection): Promise<void>;
+  createShortcut(file?: TFile, target?: ShortcutDestination, otherVaultName?: string, icon?: IconSelection): Promise<boolean>;
+}
+
+export async function runScenarios(createPlugin: () => TestPlugin): Promise<void> {
   const plugin = createPlugin(); await plugin.onload();
   const a = new TFile('A.md'); const b = new TFile('Folder/B.md');
   plugin.app.vault.files.set(a.path, a); plugin.app.vault.files.set(b.path, b);
@@ -95,7 +106,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   plugin.app.workspace.fileHandler?.(menu, b);
   plugin.app.workspace.fileHandler?.(menu, b);
   assert.equal(plugin.app.workspace.editorHandler, undefined, "Editor menus must not be registered");
-  assert.equal(menu.items.length, 2, 'Duplicate events must add each destination only once');
+  assert.equal(menu.items.length, 3, 'Duplicate events must add each destination and options only once');
   await menu.items[0].callback?.();
   assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: b.path });
   await menu.items[1].callback?.();
@@ -105,7 +116,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
     plugin.app.vault.files.set(attachment.path, attachment);
     const attachmentMenu = new Menu();
     plugin.app.workspace.fileHandler?.(attachmentMenu, attachment);
-    assert.equal(attachmentMenu.items.length, 2);
+    assert.equal(attachmentMenu.items.length, 3);
     await attachmentMenu.items[0].callback?.();
     assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: attachment.path });
     await attachmentMenu.items[1].callback?.();
@@ -135,7 +146,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       const editorMenu = new Menu();
       configured.app.workspace.fileHandler?.(fileMenu, a);
       configured.app.workspace.editorHandler?.(editorMenu, undefined, { file: a });
-      assert.equal(fileMenu.items.length, Number(desktop) + Number(startMenu));
+      assert.equal(fileMenu.items.length, Number(desktop) + Number(startMenu) + Number(desktop || startMenu));
       assert.equal(editorMenu.items.length, 0, 'Editor menus must stay unchanged for every toggle combination');
       const reloaded = createPlugin(); reloaded.data = configured.data;
       await reloaded.onload();
@@ -143,7 +154,58 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       assert.equal(restoredMenu.items.length, fileMenu.items.length, 'Preferences survive reload');
     }
   }
+  const icons = createPlugin(); await icons.onload();
+  const defaultPath = 'C:\\Icons\\default.ico';
+  const overridePath = 'C:\\Icons\\override.ico';
+  await Promise.all([
+    icons.saveDefaultIcon({ mode: 'custom', path: defaultPath }),
+    icons.saveContextMenuOption('desktop', false),
+    icons.saveContextMenuOption('tags', false),
+  ]);
+  assert.deepEqual(icons.data, { desktop: false, startMenu: true, tags: false, defaultIcon: defaultPath },
+    'Concurrent icon and toggle saves preserve every preference');
+  const iconsReloaded = createPlugin(); iconsReloaded.data = icons.data; await iconsReloaded.onload();
+  assert.equal(iconsReloaded.defaultIcon, defaultPath, 'Default icon survives reload');
+  await icons.createShortcut();
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', iconPath: defaultPath });
+  await icons.createShortcut(undefined, 'start-menu', undefined, { mode: 'custom', path: overridePath });
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', iconPath: overridePath });
+  await icons.createShortcut(undefined, 'desktop', undefined, { mode: 'standard' });
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault' }, 'Standard icon overrides a custom default');
+  await icons.createShortcut(undefined, 'desktop', 'Other vault');
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other vault' }, 'Other vaults do not inherit this vault icon');
+  await icons.createShortcut(undefined, 'desktop', 'Other vault', { mode: 'custom', path: overridePath });
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other vault', iconPath: overridePath });
+  assert.equal(await icons.createShortcut(undefined, 'desktop', undefined, { mode: 'custom', path: 'C:\\missing.ico' }), false);
+  assert.equal(creations.length, 0, 'Unavailable icons must not silently produce a different shortcut');
+  assert.match(notices.pop() ?? '', /unavailable on this computer/);
+  icons.app.vault.files.set(b.path, b);
+  icons.app.workspace.active.file = a;
+  const optionsMenu = new Menu(); icons.app.workspace.fileHandler?.(optionsMenu, b);
+  await optionsMenu.items.find(item => item.title.startsWith('Create shortcut with options'))?.callback?.();
+  const optionsIcon = iconControls.at(-1);
+  assert.ok(optionsIcon);
+  assert.deepEqual(optionsIcon.initial, { mode: 'default' });
+  assert.equal(optionsIcon.defaultPath, defaultPath);
+  await optionsIcon.change({ mode: 'custom', path: overridePath });
+  await optionsIcon.change({ mode: 'default' });
+  const optionsCreate = Setting.buttons.find(button => button.text === 'Create shortcut');
+  assert.ok(optionsCreate);
+  optionsIcon.busy = true;
+  await optionsCreate.click();
+  assert.equal(creations.length, 0, 'Options cannot create while an image is being imported');
+  optionsIcon.busy = false;
+  await optionsCreate.click();
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: b.path, iconPath: defaultPath },
+    'Options retain the clicked file and initial destination; reset restores the vault default');
+  await Promise.all([
+    icons.saveContextMenuOption('tags', true),
+    icons.saveDefaultIcon({ mode: 'standard' }),
+  ]);
+  assert.deepEqual(icons.data, { desktop: false, startMenu: true, tags: true }, 'Reset preserves concurrently changed toggles');
+  Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
   const tagged = createPlugin(); await tagged.onload();
+  await tagged.saveDefaultIcon({ mode: 'custom', path: defaultPath });
   tagged.app.vault.files.set(b.path, b);
   tagged.app.workspace.active.file = a;
   tagged.app.metadataCache.entries.set(a, { tags: [{ tag: '#active-only' }] });
@@ -160,6 +222,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   await tagMenu.items[0].callback?.();
   assert.equal(Modal.opened.length, 1, 'There is one modal for the tag action');
   const modal = Modal.opened[0];
+  assert.deepEqual(iconControls.at(-1)?.initial, { mode: 'default' }, 'Tags start with the vault default');
   assert.equal(Setting.dropdowns.length, 1, 'Windows destination is inside the modal');
   assert.equal(Setting.dropdowns[0].value, 'desktop');
   assert.equal(Setting.buttons[0].disabled, true);
@@ -176,9 +239,15 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   tagList.value = '#projects/client';
   tagList.onchange();
   assert.equal(Setting.buttons[0].disabled, false);
+  const tagIcon = iconControls.at(-1);
+  assert.ok(tagIcon);
+  tagIcon.busy = true;
+  await Setting.buttons[0].click();
+  assert.equal(creations.length, 0, 'Tags cannot create while an image is being imported');
+  tagIcon.busy = false;
   Setting.dropdowns[0].change('start-menu');
   await Setting.buttons[0].click();
-  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: '#projects/client' });
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: '#projects/client', iconPath: defaultPath });
   assert.equal(modal.contentEl.messages.length, 0, 'Successful creation closes the modal');
   await tagged.saveContextMenuOption('tags', false);
   const hidden = new Menu(); tagged.app.workspace.fileHandler?.(hidden, b);
@@ -216,4 +285,5 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
     }
   }
+  Platform.isWin = true; Platform.isMacOS = false; Platform.isLinux = false;
 }

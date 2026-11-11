@@ -4,6 +4,10 @@ import { ShortcutCreator } from './shortcuts/ShortcutCreator';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 import { OtherVaultModal } from './OtherVaultModal';
 import { TagShortcutModal } from './TagShortcutModal';
+import { addIconControl, readIcon } from './IconControl';
+import type { IconSelection } from './IconControl';
+import { ShortcutOptionsModal } from './ShortcutOptionsModal';
+import { readDefaultIcon } from './settings';
 import { readContextMenuOptions } from './settings';
 import type { ContextMenuOptions } from './settings';
 
@@ -13,12 +17,14 @@ export default class VaultShortcuts extends Plugin {
   private readonly populatedMenus = new WeakSet<Menu>();
 
   contextMenuOptions = readContextMenuOptions(undefined);
+  defaultIcon: string | undefined;
   private settingsSave: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
     try {
       const data: unknown = await this.loadData();
       this.contextMenuOptions = readContextMenuOptions(data);
+      this.defaultIcon = readDefaultIcon(data);
     } catch {
       new Notice('Could not load context menu options. Using defaults.');
     }
@@ -26,7 +32,7 @@ export default class VaultShortcuts extends Plugin {
     this.addCommand({
       id: 'create-vault-shortcut',
       name: 'Create shortcut to this vault',
-      callback: () => this.createShortcut(),
+      callback: async () => { await this.createShortcut(); },
     });
     this.addCommand({
       id: 'create-note-shortcut',
@@ -54,6 +60,10 @@ export default class VaultShortcuts extends Plugin {
       menu.addItem(item => item.setTitle('Create start menu shortcut').setIcon('external-link')
         .onClick(() => this.createShortcut(file, 'start-menu')));
     }
+    if (Platform.isWin && (this.contextMenuOptions.desktop || this.contextMenuOptions.startMenu)) {
+      menu.addItem(item => item.setTitle('Create shortcut with options…').setIcon('settings-2')
+        .onClick(() => this.openShortcutOptions(file, this.contextMenuOptions.desktop ? 'desktop' : 'start-menu')));
+    }
     if (this.contextMenuOptions.tags && this.getNoteTags(file).length) {
       menu.addItem(item => item.setTitle('Create tag shortcut').setIcon('tags')
         .onClick(() => {
@@ -62,7 +72,7 @@ export default class VaultShortcuts extends Plugin {
             new Notice('This note has no available tags. Reopen its context menu and try again.');
             return;
           }
-          new TagShortcutModal(this.app, tags, (tag, target) => this.createTagShortcut(tag, target)).open();
+          new TagShortcutModal(this.app, tags, (tag, target, icon) => this.createTagShortcut(tag, target, icon), this.defaultIcon).open();
         }));
     }
   }
@@ -76,10 +86,10 @@ export default class VaultShortcuts extends Plugin {
     return [...unique.values()].sort((a, b) => a.localeCompare(b));
   }
 
-  private async createTagShortcut(tag: string, target: ShortcutDestination): Promise<boolean> {
+  private async createTagShortcut(tag: string, target: ShortcutDestination, icon: IconSelection = { mode: 'default' }): Promise<boolean> {
     try {
       const creator = target === 'start-menu' ? this.startMenuCreator : this.creator;
-      const destination = await creator.createTagShortcut(this.app.vault.getName(), tag);
+      const destination = await creator.createTagShortcut(this.app.vault.getName(), tag, { iconPath: await this.resolveIcon(icon) });
       new Notice(`Shortcut created: ${destination}`, 7000);
       return true;
     } catch (error: unknown) {
@@ -92,26 +102,54 @@ export default class VaultShortcuts extends Plugin {
   saveContextMenuOption(key: keyof ContextMenuOptions, enabled: boolean): Promise<void> {
     const save = this.settingsSave.then(async () => {
       const next = { ...this.contextMenuOptions, [key]: enabled };
-      await this.saveData(next);
+      await this.saveData({ ...next, ...(this.defaultIcon ? { defaultIcon: this.defaultIcon } : {}) });
       this.contextMenuOptions = next;
     });
     this.settingsSave = save.catch(() => {});
     return save;
   }
 
-  async createShortcut(file?: TFile, target: ShortcutDestination = 'desktop', otherVaultName?: string): Promise<void> {
+  async saveDefaultIcon(selection: IconSelection): Promise<void> {
+    const path = selection.mode === 'custom' ? selection.path : undefined;
+    const save = this.settingsSave.then(async () => {
+      await this.saveData({ ...this.contextMenuOptions, ...(path ? { defaultIcon: path } : {}) });
+      this.defaultIcon = path;
+    });
+    this.settingsSave = save.catch(() => {});
+    return save;
+  }
+
+  openShortcutOptions(file?: TFile, target: ShortcutDestination = 'desktop'): void {
+    new ShortcutOptionsModal(this.app, this.defaultIcon, target,
+      (destination, icon) => this.createShortcut(file, destination, undefined, icon)).open();
+  }
+
+  private async resolveIcon(selection: IconSelection): Promise<string | undefined> {
+    if (!Platform.isWin) return undefined;
+    const path = selection.mode === 'custom' ? selection.path : selection.mode === 'default' ? this.defaultIcon : undefined;
+    if (path) {
+      try { await readIcon(path); }
+      catch { throw new Error('Selected icon is unavailable on this computer. Choose another image or use the Obsidian icon in shortcut options.'); }
+    }
+    return path;
+  }
+
+  async createShortcut(file?: TFile, target: ShortcutDestination = 'desktop', otherVaultName?: string, icon?: IconSelection): Promise<boolean> {
     try {
       if (file && this.app.vault.getAbstractFileByPath(file.path) !== file) {
         throw new Error('This file no longer exists. Reopen its context menu and try again.');
       }
       const vaultName = otherVaultName ?? this.app.vault.getName();
       const creator = target === 'start-menu' ? this.startMenuCreator : this.creator;
-      const destination = file ? await creator.createNoteShortcut(vaultName, file.path) :
-        await creator.createVaultShortcut(vaultName);
+      const options = { iconPath: await this.resolveIcon(icon ?? { mode: otherVaultName ? 'standard' : 'default' }) };
+      const destination = file ? await creator.createNoteShortcut(vaultName, file.path, options) :
+        await creator.createVaultShortcut(vaultName, options);
       new Notice(`Shortcut created: ${destination}`, 7000);
+      return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       new Notice(`Could not create shortcut: ${message}`, 10000);
+      return false;
     }
   }
 }
@@ -133,6 +171,8 @@ class VaultShortcutsSettings extends PluginSettingTab {
           finally { button.setDisabled(false); }
         }));
         if (Platform.isWin) {
+          setting.addButton(button => button.setButtonText('Create shortcut with options…')
+            .onClick(() => { this.vaultShortcuts.openShortcutOptions(); }));
           setting.addButton(button => button.setButtonText('Create start menu shortcut').onClick(async () => {
             button.setDisabled(true);
             try { await this.vaultShortcuts.createShortcut(undefined, 'start-menu'); }
@@ -141,12 +181,22 @@ class VaultShortcutsSettings extends PluginSettingTab {
         }
       },
     }, {
+      name: 'Default shortcut icon',
+      visible: Platform.isWin,
+      desc: 'Choose an icon for new shortcuts in this vault. Existing shortcuts keep their icons.',
+      render: setting => {
+        addIconControl(setting.settingEl, this.vaultShortcuts.defaultIcon ?
+          { mode: 'custom', path: this.vaultShortcuts.defaultIcon } : { mode: 'standard' },
+          selection => this.vaultShortcuts.saveDefaultIcon(selection), undefined, false);
+      },
+    }, {
       name: 'Other vaults',
       desc: 'Create a vault shortcut without installing this plugin in the other vault.',
       render: setting => {
         setting.addButton(button => button.setButtonText('Create shortcut to another vault').onClick(() => {
-          new OtherVaultModal(this.app, (name, target) =>
-            this.vaultShortcuts.createShortcut(undefined, target, name)).open();
+          new OtherVaultModal(this.app, async (name, target, icon) => {
+            await this.vaultShortcuts.createShortcut(undefined, target, name, icon);
+          }).open();
         }));
       },
     }, {
