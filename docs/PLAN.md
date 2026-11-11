@@ -31,8 +31,10 @@ preserve drafts on tab switches. Only the active tab scrolls; validation, launch
 effect and creation controls remain visible below both tabs.
 Production-control tests cover default tab visibility, accessible keyboard
 switching, preserved drafts and Copy/creation from General after Advanced edits.
-The tabbed layout has automated coverage; a live recheck was interrupted by the
-Windows lock screen. Earlier live verification below describes the prior layout.
+Live verification in detached Recipes Settings confirmed the General/Advanced
+split, independent Advanced scrolling with fixed preview/footer, inline validation
+and URI updates, and keyboard switching back to General without losing the target
+or action. The dialog was canceled without creating or launching a shortcut.
 
 The 1.0.0 implementation includes the full native options dialog, typed action
 requests, model-enforced clicked-file identities, one shared URI builder and a
