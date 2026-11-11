@@ -11,6 +11,7 @@ export class TagShortcutModal extends Modal {
     private readonly tags: readonly string[],
     private readonly create: (tag: string, target: ShortcutDestination, icon?: IconSelection) => Promise<boolean>,
     private readonly defaultIcon?: string,
+    private readonly configure?: (tag: string, target: ShortcutDestination, icon: IconSelection) => void,
   ) {
     super(app);
   }
@@ -23,6 +24,7 @@ export class TagShortcutModal extends Modal {
     let busy = false;
     let icon: IconSelection = { mode: 'default' };
     let updateButton = (): void => {};
+    let updateOptions = (): void => {};
     this.contentEl.createEl('p', {
       text: 'Choose a tag from this note. The shortcut opens its search results in this vault.',
     });
@@ -47,7 +49,7 @@ export class TagShortcutModal extends Modal {
     }
     const importing = Platform.isWin ? addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, this.defaultIcon) : () => false;
     new Setting(this.contentEl).addButton(button => {
-      updateButton = () => { button.setDisabled(busy || !selected); };
+      updateButton = () => { button.setDisabled(busy || !selected); updateOptions(); };
       button.setButtonText('Create shortcut').setCta().setDisabled(true).onClick(async () => {
         if (busy || !selected || this.generation !== generation) return;
         if (importing()) { new Notice('Wait for the icon import to finish.'); return; }
@@ -60,6 +62,14 @@ export class TagShortcutModal extends Modal {
           busy = false;
           if (this.generation === generation) updateButton();
         }
+      });
+    });
+    if (this.configure) new Setting(this.contentEl).addButton(button => {
+      updateOptions = () => { button.setDisabled(busy || !selected); };
+      button.setButtonText('More options…').setDisabled(true).onClick(() => {
+        if (busy || !selected || importing() || this.generation !== generation) return;
+        this.configure?.(selected, target, icon);
+        this.close();
       });
     });
   }

@@ -4,9 +4,14 @@ import { WindowsShortcutCreator } from './WindowsShortcutCreator';
 import type { ShortcutDestination } from './WindowsShortcutCreator';
 import { MacOSShortcutCreator } from './MacOSShortcutCreator';
 import { LinuxShortcutCreator } from './LinuxShortcutCreator';
+import type { ShortcutContext, ShortcutRequest } from './requests';
 
 export class ShortcutCreator implements IShortcutCreator {
   private readonly creator: IShortcutCreator | undefined;
+
+  async createShortcut(request: ShortcutRequest, label: string, options?: ShortcutOptions, context?: ShortcutContext): Promise<string> {
+    return this.getCreator().createShortcut(request, label, options, context);
+  }
 
   constructor(destination: ShortcutDestination = 'desktop') {
     if (Platform.isDesktopApp) {

@@ -6,12 +6,41 @@ steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
 none remain. Publishing/submitting the plugin is still outside this task.
 
-Implementation must follow [AGENTS.md](AGENTS.md): TypeScript with strict typing,
+Implementation must follow [AGENTS.md](../AGENTS.md): TypeScript with strict typing,
 no `any` unless unavoidable and justified, the linked official Obsidian policies,
 and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**1.0.0 URI builder planning (November 11, 2026):** the user requested broad
+documented core URI coverage, based on their two-page notebook-dialog sketch.
+The URI is a read-only live preview with Copy. A note-origin dialog fixes both
+vault and clicked file while offering navigation and append/prepend/replace.
+See [URI-DESIGN.md](URI-DESIGN.md) for action coverage, context restrictions,
+approved layout, compatibility findings and verification steps. The user approved
+end-to-end implementation, documentation in `docs/`, preview images and a final
+subagent review. Package/manifest target 1.0.0 with Obsidian 1.15.0 minimum.
+Broader URI support supersedes the earlier deferral; no merge or publication is
+authorized. Implementation and verification results are recorded below.
+
+The 1.0.0 implementation includes the full native options dialog, typed action
+requests, model-enforced clicked-file identities, one shared URI builder and a
+general creator method for all three OS implementations. Tag and other-vault
+dialogs expose More options presets. Quick actions and independent menu toggles
+remain available. Plans, research and preview images now live under `docs/`.
+
+Windows live verification used an isolated `.test-build/uri-live-vault`, not
+Recipes notes, for Unicode creation, heading append, prepend, replacement, daily
+capture and unique-note creation; expected on-disk effects were observed. New-tab
+opening and search results were inspected in Obsidian 1.15.0. In detached Recipes
+Settings, the real production dialog, action fields, validation, URI updates and
+PNG image picking/conversion/preview were verified. No Recipes writing shortcut
+was launched. Bound-note/attachment controls and callback serialization have
+automated coverage; callback destination delivery and Mac/Linux host behavior
+remain unverified. Independent subagent review found no remaining actionable
+issues after UI-state and custom-preview fixes. Strict typecheck, official lint,
+36 tests and production build are the final local checks.
 
 **Windows custom icons and creation options (November 10, 2026, version 0.1.0):**
 The user agreed to [issue #1](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues/1)

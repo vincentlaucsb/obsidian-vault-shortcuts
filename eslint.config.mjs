@@ -19,4 +19,12 @@ export default defineConfig(
     },
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
   },
+  {
+    files: ['src/ShortcutOptionsModal.ts'],
+    rules: {
+      // URI is the standard protocol acronym in the approved UI. Preserve its
+      // capitalization while continuing to check every label for sentence case.
+      'obsidianmd/ui/sentence-case': ['warn', { acronyms: ['URI', 'ID', 'URL', 'CLI', 'PNG', 'JPEG', 'ICO'], enforceCamelCaseLower: true }],
+    },
+  },
 );

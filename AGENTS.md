@@ -1,6 +1,6 @@
 # Vault Shortcuts contributor rules
 
-Applies to all work in this repository. Read [PLAN.md](PLAN.md) for the agreed
+Applies to all work in this repository. Read [docs/PLAN.md](docs/PLAN.md) for the agreed
 product scope and architecture. Keep this file and that plan consistent with the
 user's latest decisions. Do not expand the product to solve hypothetical issues.
 
@@ -116,8 +116,10 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 - Follow csvzall's source layout: all plugin implementation belongs under `src/`,
   with `src/main.ts` as the entry point and shortcut creators/helpers in
-  `src/shortcuts/`. Keep tests and fixtures in `tests/`; keep documentation,
-  manifest and tooling configuration at the repository root. Do not add runtime
+  `src/shortcuts/`. Keep tests and fixtures in `tests/`; keep design documents,
+  plans, research and preview images under `docs/` (images in `docs/images/`).
+  Keep README, AGENTS.md, LICENSE, manifest and tooling configuration at the
+  repository root. Update relative links when moving documents. Do not add runtime
   TypeScript files at the root. The build must still emit root `main.js` so release
   assets and the Truck vault's existing file symlinks continue to work.
 - Implement `IShortcutCreator`, public `ShortcutCreator` factory/facade, and one
@@ -135,14 +137,21 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   clicked file, not the active note. Retain existing commands as secondary access.
 - Windows custom icons (issue #1, version 0.1.0): preserve immediate creation with the
   vault default and add **Create shortcut with options…** for explicit overrides.
-  This dialog is the future home for more Obsidian URI options; do not implement
-  broader URI support as part of custom icons. Reuse the image picker/preview in
+  Broader core URI support is approved for 1.0.0 in docs/URI-DESIGN.md;
+  the custom-icon implementation remains the 0.1.0 baseline. Reuse the image picker/preview in
   settings and creation, tag and other-vault dialogs. Accept PNG, JPEG and ICO;
   distinguish vault default, custom image and the standard Obsidian icon.
   Other-vault shortcuts default to the Obsidian icon with an optional override,
   without automatically inheriting the current vault's custom icon.
   Create picker inputs and conversion elements in the control's owning document;
   detached Settings windows must not use main-window global DOM helpers.
+- 1.0.0 URI builder: use a read-only live URI preview with Copy and structured
+  controls. In a note-origin dialog, fix both vault and clicked file, including
+  for append/prepend/replace actions. Enforce context in the request model rather
+  than relying only on disabled UI. Generate writing URIs without directly editing
+  notes or reading clipboard content during shortcut creation. The detailed draft
+  is docs/URI-DESIGN.md. Preserve quick actions and provide the options dialog on
+  every supported desktop OS, with destination/icon controls reflecting the OS.
 - Keep Windows `.url` shortcuts with optional icon-file/index fields. Convert images
   locally to multi-resolution ICO, preserving transparency and aspect ratio. Keep
   immutable, content-based icon copies outside the vault and plugin directory;
@@ -184,7 +193,7 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 - Register event handlers with `registerEvent`; register DOM events/timers through
   lifecycle helpers if introduced. Enabling/disabling must not duplicate menu items
   or leave listeners behind. Avoid retaining views or detaching user workspace leaves.
-- Use core `obsidian://open`, percent-encoding parameter values separately. Keep
+- Use documented core `obsidian://` actions, percent-encoding parameter values separately. Keep
   full relative note paths. Filename sanitization must not change the URI target.
 - Default to vault names for URI targets. Do not automatically retrieve IDs through
   undocumented `app.appId` or internal registry access; the lack of first-class
@@ -268,9 +277,9 @@ Local pre-release checklist:
 Current commands: `npm run typecheck`, `npm run lint` (official recommended rules,
 zero warnings required), `npm test` (TypeScript tests), and `npm run build`
 (typecheck + bundle). Official lint is installed and has passed for the implementation.
-A root MIT LICENSE has been added. Implementation targets stable Obsidian 1.13.7
-(verified from the official release feed on September 13, 2026), replacing the
-spike's provisional minimum. Existing tests do not establish live Obsidian launch behavior.
+A root MIT LICENSE has been added. Implementation targets stable Obsidian 1.15.0
+for the full URI builder (verified from the official release feed on November 11,
+2026). Existing tests do not establish live Obsidian launch behavior.
 
 The objective is to prevent avoidable review findings, not promise first-pass
 acceptance. This file does not authorize publishing a release or submitting the plugin.

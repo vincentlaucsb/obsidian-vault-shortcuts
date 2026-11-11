@@ -3,6 +3,8 @@ import type { IconSelection } from '../src/IconControl';
 import type { ShortcutDestination } from '../src/shortcuts/WindowsShortcutCreator';
 import type { ShortcutOptions } from '../src/shortcuts/IShortcutCreator';
 import { iconControls } from './icon-control-fixture';
+import { optionDialogs } from './options-modal-host-fixture';
+import type { ShortcutContext, ShortcutRequest } from '../src/shortcuts/requests';
 
 export const Platform = { isDesktopApp: true, isWin: true, isMacOS: false, isLinux: false };
 const notices: string[] = [];
@@ -74,6 +76,11 @@ import { Modal, Setting } from './modal-fixture';
 export { Modal, Setting } from './modal-fixture';
 class Creator {
   constructor(private readonly os: string) {}
+  createShortcut(request: ShortcutRequest, _label: string, options?: ShortcutOptions, _context?: ShortcutContext): Promise<string> {
+    if (request.action !== 'open' || request.target.kind !== 'vault') throw new Error('Unexpected host fixture request');
+    return request.target.file ? this.createNoteShortcut(request.target.vault, request.target.file, options) :
+      this.createVaultShortcut(request.target.vault, options);
+  }
   createVaultShortcut(vault: string, options?: ShortcutOptions): Promise<string> {
     creations.push({ os: this.os, vault, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
@@ -183,21 +190,20 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
   icons.app.workspace.active.file = a;
   const optionsMenu = new Menu(); icons.app.workspace.fileHandler?.(optionsMenu, b);
   await optionsMenu.items.find(item => item.title.startsWith('Create shortcut with options'))?.callback?.();
-  const optionsIcon = iconControls.at(-1);
-  assert.ok(optionsIcon);
-  assert.deepEqual(optionsIcon.initial, { mode: 'default' });
-  assert.equal(optionsIcon.defaultPath, defaultPath);
-  await optionsIcon.change({ mode: 'custom', path: overridePath });
-  await optionsIcon.change({ mode: 'default' });
-  const optionsCreate = Setting.buttons.find(button => button.text === 'Create shortcut');
-  assert.ok(optionsCreate);
-  optionsIcon.busy = true;
-  await optionsCreate.click();
-  assert.equal(creations.length, 0, 'Options cannot create while an image is being imported');
-  optionsIcon.busy = false;
-  await optionsCreate.click();
+  const optionsDialog = optionDialogs.at(-1);
+  assert.ok(optionsDialog);
+  assert.deepEqual(optionsDialog.context, { kind: 'file', vault: 'Test vault', file: b.path, markdown: true });
+  assert.equal(optionsDialog.defaultIcon, defaultPath);
+  assert.equal(optionsDialog.target, 'start-menu');
+  const request: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: 'Test vault', file: b.path } };
+  await optionsDialog.create(request, 'Note shortcut', 'start-menu', { mode: 'default' });
   assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: b.path, iconPath: defaultPath },
-    'Options retain the clicked file and initial destination; reset restores the vault default');
+    'Options retain the clicked file and initial destination');
+  assert.equal(await optionsDialog.create({ action: 'search', vault: 'Other' }, 'Bad', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0, 'An injected request cannot escape the clicked note context');
+  icons.app.vault.files.delete(b.path);
+  assert.equal(await optionsDialog.create(request, 'Stale', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0, 'A configured shortcut rechecks file existence before creation');
   await Promise.all([
     icons.saveContextMenuOption('tags', true),
     icons.saveDefaultIcon({ mode: 'standard' }),
@@ -266,7 +272,7 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
     Platform.isWin = false; Platform.isMacOS = os === 'mac'; Platform.isLinux = os === 'linux';
     const next = createPlugin(); await next.onload(); next.app.vault.files.set(a.path, a);
     const nextMenu = new Menu(); next.app.workspace.fileHandler?.(nextMenu, a);
-    assert.equal(nextMenu.items.length, 1, 'Start menu action is Windows-only');
+    assert.equal(nextMenu.items.length, 2, 'Options are available on every desktop platform');
     await nextMenu.items[0].callback?.();
     if (os === 'unsupported') {
       assert.equal(creations.length, 0); assert.match(notices.pop() ?? '', /unavailable/);
@@ -274,8 +280,8 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
     if (os !== 'unsupported') {
       next.app.metadataCache.entries.set(a, { tags: [{ tag: '#work' }] });
       const tagsOnOS = new Menu(); next.app.workspace.fileHandler?.(tagsOnOS, a);
-      assert.deepEqual(tagsOnOS.items.map(item => item.title), ['Create desktop shortcut', 'Create tag shortcut']);
-      await tagsOnOS.items[1].callback?.();
+      assert.deepEqual(tagsOnOS.items.map(item => item.title), ['Create desktop shortcut', 'Create shortcut with options\u2026', 'Create tag shortcut']);
+      await tagsOnOS.items[2].callback?.();
       assert.equal(Setting.dropdowns.length, 0, 'Destination control is Windows-only');
       const osTagList = Modal.opened[0].contentEl.messages[1];
       osTagList.value = '#work';

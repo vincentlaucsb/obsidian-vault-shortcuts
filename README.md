@@ -4,6 +4,40 @@ Create Desktop shortcuts to an Obsidian vault, file or tag search.
 
 Windows also supports Start Menu shortcuts.
 
+## URI shortcuts (1.0.0)
+
+Choose **Create shortcut with options…** in plugin settings or a file's context
+menu. The dialog shows a live, read-only URI preview with **Copy URI**, an editable
+shortcut filename, destination, and Windows icon controls. The filename does not
+change the target. Creating a shortcut never launches it.
+
+The notebook dialog supports opening vaults/files (including headings or blocks),
+creating notes, appending/prepending/replacing note contents, daily notes, unique
+notes, searches, the vault manager, and the advanced Hook address action. Each
+action reveals its relevant controls. Daily notes and unique notes require their
+corresponding core plugins in the target vault. Advanced callback fields follow
+Obsidian's own callback permission; the plugin does not enable it.
+
+A dialog opened from a Markdown file fixes its vault and file and offers Open,
+Append, Prepend and Replace. An attachment offers Open only. Unrelated actions and
+target changes cannot escape these constraints. Heading/block suggestions use
+cached metadata; no note contents are read. **More options…** in tag and other-vault
+dialogs opens the builder with that search or vault already selected.
+
+Content can be literal text or **Clipboard when launched**. Literal text is stored
+in the shortcut file, so do not embed sensitive text in shortcuts you share. The
+clipboard is not read during shortcut creation. Launching a writing shortcut can
+modify a note each time; Replace explicitly replaces its contents. Use an isolated
+test vault when trying writing actions. Callback destinations can receive note
+information and open another app when the shortcut is launched.
+
+Existing quick creation actions remain available. General advanced path targets
+use absolute native paths; fixed-note shortcuts always retain vault-relative
+targets. Creating a new note stays in the current vault.
+
+See the [design specification and preview images](docs/URI-DESIGN.md) and
+[project plan](docs/PLAN.md).
+
 ## Usage
 
 - **Vault:** open Settings, select **Vault Shortcuts** in the Community plugins
@@ -84,7 +118,7 @@ on the testing computer.
 
 ## Platforms
 
-Requires **Obsidian desktop 1.13.7 or newer**. Mobile is not supported.
+Requires **Obsidian desktop 1.15.0 or newer**. Mobile is not supported.
 
 | Platform | Shortcut | Desktop discovery |
 | --- | --- | --- |
@@ -203,7 +237,7 @@ Report problems in the [issue tracker](https://github.com/vincentlaucsb/obsidian
 ## Development
 
 Read [AGENTS.md](AGENTS.md) for strict TypeScript and official Obsidian review rules,
-and [PLAN.md](PLAN.md) for decisions and the creator interface. The runtime uses
+and [docs/PLAN.md](docs/PLAN.md) for decisions and the creator interface. The runtime uses
 `IShortcutCreator`, a public `ShortcutCreator` factory/facade and one creator per OS.
 URI construction and safe file creation are shared.
 

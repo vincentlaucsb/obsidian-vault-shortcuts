@@ -3,6 +3,8 @@ import { isAbsolute, join } from 'node:path';
 import { buildObsidianUri, buildTagSearchUri } from './uri';
 import type { ShortcutOptions } from './IShortcutCreator';
 import { validateIconPath } from '../icons';
+import { buildShortcutUri } from './requests';
+import type { ShortcutContext, ShortcutRequest } from './requests';
 
 export function sanitizeFilename(label: string): string {
   let safe = Array.from(label, character => character.charCodeAt(0) < 32 ? '-' : character)
@@ -45,6 +47,16 @@ export async function writeShortcut(
   const uri = buildObsidianUri(vaultName, notePath);
   const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri);
   return writeShortcutContent(desktop, format, label, content, format === 'url' && options?.iconPath !== undefined);
+}
+
+export async function writeRequestShortcut(
+  directory: string, format: 'url' | 'desktop', request: ShortcutRequest, label: string,
+  options?: ShortcutOptions, context?: ShortcutContext,
+): Promise<string> {
+  if (!label.trim()) throw new Error('Enter a shortcut name.');
+  const uri = buildShortcutUri(request, context);
+  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri);
+  return writeShortcutContent(directory, format, label, content, format === 'url' && options?.iconPath !== undefined);
 }
 
 export async function writeShortcutContent(
