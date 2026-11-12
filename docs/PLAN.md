@@ -17,6 +17,9 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 other-vault button rows below their full-width labels and descriptions. Let button
 rows wrap within narrow settings panes; keep icon preview/actions together and
 icon status on its own line. Context-menu toggles retain their native layout.
+Verified live in detached Recipes Settings at 626px and 902px window widths and
+maximized: descriptions stay readable, action buttons wrap/stack below them, and
+icon status stays left-aligned on its own line. No shortcut was created.
 
 **1.0.0 URI builder planning (November 11, 2026):** the user requested broad
 documented core URI coverage, based on their two-page notebook-dialog sketch.

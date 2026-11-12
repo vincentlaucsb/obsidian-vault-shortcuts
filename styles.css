@@ -68,6 +68,7 @@
 
 .vault-shortcuts-settings-icon > .vault-shortcuts-icon-status {
   margin: 0;
+  text-align: start;
 }
 
 .vault-shortcuts-uri-modal {
