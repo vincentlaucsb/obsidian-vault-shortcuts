@@ -203,6 +203,7 @@ class VaultShortcutsSettings extends PluginSettingTab {
       desc: Platform.isWin ? `Create a shortcut to ${this.app.vault.getName()} on the desktop or in the start menu.` :
         `Create a desktop shortcut to ${this.app.vault.getName()}.`,
       render: setting => {
+        setting.setClass('vault-shortcuts-stacked-setting');
         setting.addButton(button => button.setButtonText('Create shortcut').onClick(async () => {
           button.setDisabled(true);
           try { await this.vaultShortcuts.createShortcut(); }
@@ -223,7 +224,9 @@ class VaultShortcutsSettings extends PluginSettingTab {
       visible: Platform.isWin,
       desc: 'Choose an icon for new shortcuts in this vault. Existing shortcuts keep their icons.',
       render: setting => {
-        addIconControl(setting.settingEl, this.vaultShortcuts.defaultIcon ?
+        setting.setClass('vault-shortcuts-stacked-setting');
+        setting.controlEl.addClass('vault-shortcuts-settings-icon');
+        addIconControl(setting.controlEl, this.vaultShortcuts.defaultIcon ?
           { mode: 'custom', path: this.vaultShortcuts.defaultIcon } : { mode: 'standard' },
           selection => this.vaultShortcuts.saveDefaultIcon(selection), undefined, false);
       },
@@ -231,6 +234,7 @@ class VaultShortcutsSettings extends PluginSettingTab {
       name: 'Other vaults',
       desc: 'Create a vault shortcut without installing this plugin in the other vault.',
       render: setting => {
+        setting.setClass('vault-shortcuts-stacked-setting');
         setting.addButton(button => button.setButtonText('Create shortcut to another vault').onClick(() => {
           new OtherVaultModal(this.app, async (name, target, icon) => {
             await this.vaultShortcuts.createShortcut(undefined, target, name, icon);

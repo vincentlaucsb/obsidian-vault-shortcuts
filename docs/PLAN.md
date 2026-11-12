@@ -13,6 +13,11 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Settings layout (November 11, 2026):** put vault creation, default icon and
+other-vault button rows below their full-width labels and descriptions. Let button
+rows wrap within narrow settings panes; keep icon preview/actions together and
+icon status on its own line. Context-menu toggles retain their native layout.
+
 **1.0.0 URI builder planning (November 11, 2026):** the user requested broad
 documented core URI coverage, based on their two-page notebook-dialog sketch.
 The URI is a read-only live preview with Copy. A note-origin dialog fixes both
