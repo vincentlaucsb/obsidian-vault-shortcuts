@@ -13,6 +13,25 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Cross-platform custom icons (November 11, 2026):** extend the same picker and
+vault/per-shortcut/tag/other-vault defaults to macOS and Linux. Preserve Windows
+ICO generation. Normalize other platforms to aspect-preserving, transparent
+512-pixel PNGs stored by content hash under macOS Application Support or Linux
+XDG data storage. Linux writes an escaped absolute `Icon` path into the existing
+Type=Link `.desktop` file. macOS keeps the existing `.url` format and applies a
+Finder file icon through AppKit using a minimal TypeScript-checked JXA bridge,
+fixed osascript/argument arrays, timeout and EOF. Preflight assets before writing;
+report the created path and retain the shortcut if native icon application fails.
+No existing shortcuts are modified or deleted. Conversion, shared production
+controls, serialization, storage and bridge/process boundaries have automated
+coverage. Native macOS/Linux icon display and launching remain experimental and
+unverified here; a maintainer host is not a prerequisite for this scoped feature.
+All 44 tests, strict typecheck, official zero-warning lint and production build
+pass on Windows. Independent source review is clean. Production-control tests
+cover all three picker branches; native Windows ICO/Unicode parsing tests pass.
+The macOS bridge tests simulate AppKit/process boundaries and do not establish
+Finder metadata behavior on a Mac.
+
 **Bound-file vault identity (November 11, 2026):** the Advanced tab offers vault
 name (default) or manually pasted vault ID for the same clicked note/attachment.
 Explain that names are readable/portable when names match, but renames break links
@@ -78,7 +97,7 @@ was launched. Bound-note/attachment controls and callback serialization have
 automated coverage; callback destination delivery and Mac/Linux host behavior
 remain unverified. Independent subagent review found no remaining actionable
 issues after UI-state and custom-preview fixes. Strict typecheck, official lint,
-40 tests and production build are the final local checks.
+44 tests and production build are the final local checks.
 
 **Windows custom icons and creation options (November 10, 2026, version 0.1.0):**
 The user agreed to [issue #1](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues/1)

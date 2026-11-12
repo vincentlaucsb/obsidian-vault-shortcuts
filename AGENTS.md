@@ -171,6 +171,19 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   focused automated checks when implementing this feature.
   Write custom-icon `.url` files as UTF-16LE with a BOM so Windows preserves
   Unicode icon paths; retain existing encoding for standard-icon shortcuts.
+- Custom icons are also approved for macOS and Linux in 1.0.0. Share the picker,
+  preview and default/custom/standard choices across all desktop platforms.
+  Keep Windows ICO behavior; normalize macOS/Linux images to transparent,
+  aspect-preserving 512-pixel PNGs in native user data directories outside the
+  vault/plugin. Linux `.desktop` links use an escaped absolute `Icon` path.
+  macOS keeps `.url` contents and applies Finder metadata only to the newly
+  created file via AppKit. Keep the minimal JXA bridge authored/type-checked in
+  TypeScript, with paths as separate arguments to fixed `/usr/bin/osascript`, a
+  bounded timeout and no shell, Finder UI automation or runtime installation.
+  Preflight missing/invalid assets; if native metadata application fails after
+  creation, keep the shortcut and identify its path in the error. Never silently
+  claim the custom icon succeeded. Document retained assets, metadata-copy
+  limitations and unverified native platform behavior accurately.
 - Add a single **Create tag shortcut** file-menu item for tagged Markdown notes.
   Use the clicked note's cached inline/property tags, deduplicate case-insensitively
   and sort. Open a native modal with a bounded-height, scrollable tag list and an explicit

@@ -6,6 +6,7 @@ const elements: ElementFixture[] = [];
 const notices: string[] = [];
 const framesDrawn: number[][] = [];
 let imports = 0;
+export const Platform = { isWin: true, isMacOS: false, isLinux: false };
 interface SelectedFile { name: string; size: number; arrayBuffer: () => Promise<ArrayBuffer> }
 
 class ElementFixture {
@@ -77,13 +78,20 @@ export class Notice { constructor(message: string) { notices.push(message); } }
 // input handling, decode/resize orchestration, callbacks and cleanup are exercised.
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 export const ICON_SIZES = [16, 32, 48, 256];
+export const PNG_ICON_SIZE = 512;
 export function validateIconPath(): void {}
+export function validatePosixIconPath(): void {}
+export function validatePngIcon(): void {}
 export function validateIco(): void {}
 export function createIco(frames: readonly { size: number; png: Uint8Array }[]): Buffer {
   assert.deepEqual(frames.map(frame => frame.size), ICON_SIZES);
   return Buffer.from('ico');
 }
 export function storeIcon(): Promise<string> { imports++; return Promise.resolve('C:\\Icons\\chosen.ico'); }
+export function storePngIcon(_data: Uint8Array, platform: 'macos' | 'linux'): Promise<string> {
+  imports++;
+  return Promise.resolve(platform === 'macos' ? '/Users/test/Icons/chosen.png' : '/home/test/Icons/chosen.png');
+}
 export function stat(): Promise<{ size: number }> { return Promise.resolve({ size: 3 }); }
 export function readFile(): Promise<Buffer> { return Promise.resolve(Buffer.from('ico')); }
 
@@ -133,4 +141,22 @@ export async function runPickerScenarios(addControl: ControlFactory): Promise<vo
     input.failClick = true;
     choose.click();
     assert.match(notices.pop() ?? '', /Could not open image picker: Picker failed/);
+
+    for (const platform of ['macos', 'linux'] as const) {
+      Platform.isWin = false; Platform.isMacOS = platform === 'macos'; Platform.isLinux = platform === 'linux';
+      framesDrawn.length = 0;
+      const buttonStart = Setting.buttons.length;
+      const localRoot = new ElementFixture('root');
+      const selections: IconSelection[] = [];
+      const importing = addControl(localRoot, { mode: 'standard' }, value => { selections.push(value); return Promise.resolve(); });
+      const select = Setting.buttons.slice(buttonStart).find(button => button.text === 'Choose image…');
+      const picker = elements.filter(element => element.tag === 'input').at(-1);
+      assert.ok(select); assert.ok(picker);
+      picker.files = [{ name: 'recipe.png', size: 24, arrayBuffer: () => Promise.resolve(bytes.buffer) }];
+      select.click(); picker.onchange();
+      await setImmediate();
+      assert.deepEqual(framesDrawn, [[PNG_ICON_SIZE, 0, PNG_ICON_SIZE / 4, PNG_ICON_SIZE, PNG_ICON_SIZE / 2]]);
+      assert.deepEqual(selections, [{ mode: 'custom', path: platform === 'macos' ? '/Users/test/Icons/chosen.png' : '/home/test/Icons/chosen.png' }]);
+      assert.equal(importing(), false);
+    }
 }

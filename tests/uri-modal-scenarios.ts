@@ -307,9 +307,11 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   seededCustom.close();
 
   Platform.isWin = false;
+  const beforeLinuxIcons = icons.length;
   const linux = factory({ context: { kind: 'general', currentVault: 'Recipes' }, create: () => Promise.resolve(true) });
   linux.open();
   assert.ok(absent('destination'), 'Start-menu destination control is Windows-only');
+  assert.equal(icons.length, beforeLinuxIcons + 1, 'Custom icon controls are available beyond Windows');
   linux.close();
   assert.equal(clipboardReads, 0, 'Clipboard source is serialized, never read during setup');
 }

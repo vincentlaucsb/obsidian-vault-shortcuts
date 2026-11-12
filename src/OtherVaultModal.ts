@@ -46,7 +46,7 @@ export class OtherVaultModal extends Modal {
         .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu')
         .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
     }
-    const importing = Platform.isWin ? addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, undefined, false) : () => false;
+    const importing = addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, undefined, false);
     new Setting(this.contentEl).addButton(button => {
       selectedNameChanged = () => { button.setDisabled(busy || !name.trim()); updateOptions(); };
       button.setButtonText('Create shortcut').setCta().setDisabled(true).onClick(async () => {

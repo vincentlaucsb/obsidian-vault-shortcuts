@@ -47,7 +47,7 @@ export class TagShortcutModal extends Modal {
         .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue('desktop')
         .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
     }
-    const importing = Platform.isWin ? addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, this.defaultIcon) : () => false;
+    const importing = addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, this.defaultIcon);
     new Setting(this.contentEl).addButton(button => {
       updateButton = () => { button.setDisabled(busy || !selected); updateOptions(); };
       button.setButtonText('Create shortcut').setCta().setDisabled(true).onClick(async () => {

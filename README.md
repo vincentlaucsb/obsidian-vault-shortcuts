@@ -8,7 +8,7 @@ Windows also supports Start Menu shortcuts.
 
 Choose **Create shortcut with options…** in plugin settings or a file's context
 menu. The dialog shows a live, read-only URI preview with **Copy URI**, an editable
-shortcut filename, destination, and Windows icon controls in the **General** tab.
+shortcut filename, destination, and icon controls in the **General** tab.
 The **Advanced** tab contains the action, target and URI behavior controls. The
 preview and Copy stay fixed above both tabs, and switching tabs preserves edits.
 The filename does not
@@ -105,7 +105,7 @@ The Desktop and Start menu toggles hide their file actions. The options action i
 shown when either destination action is enabled; these toggles do not restrict
 destinations inside shortcut dialogs.
 
-## Windows custom icons
+## Custom icons
 
 In plugin settings, **Default shortcut icon** lets you choose a PNG, JPG/JPEG or
 ICO image for new shortcuts in this vault. A preview shows the selected image.
@@ -113,24 +113,37 @@ Existing quick creation actions use that default immediately; changing it does
 not update existing shortcuts. Recreate a shortcut to change its icon.
 
 For a vault, choose **Create shortcut with options…** in plugin settings. For a
-file, choose that action in its context menu. The dialog lets you choose Desktop
-or Start menu and override the icon for that shortcut. **Use default** restores
+file, choose that action in its context menu. The dialog lets you override the
+icon and choose Desktop (plus Start menu on Windows). **Use default** restores
 the current vault default; **Use Obsidian icon** creates a standard icon even when
 the vault has a custom default. The tag dialog includes the same controls.
 Other-vault shortcuts start with the Obsidian icon and allow a custom image without
 inheriting this vault's default. Canceling the image picker keeps the selection.
 
-Images are converted locally to ICO with 16, 32, 48 and 256 pixel versions,
-preserving transparency and fitting rectangular images without stretching.
+Windows images are converted locally to ICO with 16, 32, 48 and 256 pixel versions.
+macOS and Linux use a 512-pixel PNG. Both preserve transparency and fit rectangular
+images without stretching.
 Imports are limited to 20 MB; PNG/JPEG images must have at most 40 million pixels.
 If an icon is missing on this computer, choose the image again or select **Use
 Obsidian icon** in the options dialog. Settings can sync between computers, but
-the imported icon files are local to each Windows user account.
+the imported icon files are local to each user account and platform. Reselect the
+image on another computer or OS; Windows ICO paths are not reused as native PNGs.
 
-Custom icons affect newly created Windows Desktop and Start menu `.url` shortcuts.
-macOS and Linux creation behavior is unchanged. Windows controls icon caching and
-Start menu presentation; actual appearance and launch behavior should be checked
-on the testing computer.
+Custom icons affect newly created shortcuts on all three desktop platforms:
+
+- Windows uses the `.url` icon fields. Windows controls caching and Start menu presentation.
+- Linux uses an absolute PNG path in the `.desktop` link's `Icon` field, following
+  the [Desktop Entry specification](https://specifications.freedesktop.org/desktop-entry/latest/recognized-keys.html).
+  Icon display and launch support depend on the desktop environment.
+- macOS attaches a Finder file icon to the new `.url` using Apple's
+  [native file-icon API](https://developer.apple.com/documentation/appkit/nsworkspace/seticon(_:forfile:options:)).
+  If applying it fails, the error identifies the already-created shortcut, which
+  is kept. Copying it through tools/filesystems that discard Finder metadata can
+  lose the custom icon.
+
+macOS/Linux support is experimental: image conversion, output and bridge behavior
+have automated coverage, but native appearance/launching have not been verified
+on those systems. Actual Windows display should also be checked on the testing computer.
 
 ## Platforms
 
@@ -191,16 +204,28 @@ the configured Programs folder; the shared writer creates a `.url` containing th
 Obsidian URI directly. No Explorer wrapper or temporary link generation is needed.
 It does not change Start pins or write to the all-users Start Menu.
 
-Choosing an image reads that selected file and stores a durable ICO copy under
-`%LOCALAPPDATA%\VaultShortcuts\Icons\<content-hash>.ico`, outside the vault and
-plugin installation. Identical imported icons reuse the same asset; different
-images receive immutable filenames. Shortcuts reference this local copy so moving
-or deleting the source image, disabling the plugin, or uninstalling it leaves their
-icons available. Icon files are deliberately retained after uninstall and are not
-automatically cleaned up, because existing shortcuts may still reference them.
-Deleting that directory manually removes the custom icons from those shortcuts.
-Preview and shortcut creation also read the selected local ICO. No online image
+Choosing an image reads that selected file and stores a durable, content-based
+copy outside the vault and plugin installation:
+
+- Windows: `%LOCALAPPDATA%\VaultShortcuts\Icons\<content-hash>.ico`.
+- macOS: `~/Library/Application Support/VaultShortcuts/Icons/<content-hash>.png`.
+- Linux: `$XDG_DATA_HOME/vault-shortcuts/icons/<content-hash>.png`, defaulting to
+  `~/.local/share/vault-shortcuts/icons/` when the variable is unset or invalid.
+
+Identical imported icons reuse the same asset; different images receive immutable
+filenames. Windows/Linux shortcuts reference the local copy; macOS applies the
+image as Finder file metadata. Moving or deleting the original image, disabling
+the plugin or uninstalling it leaves those icons available. Assets are deliberately
+retained after uninstall because shortcuts or saved selections may reference them.
+Deleting these assets breaks Windows/Linux icon references and makes saved icon
+selections unavailable. Finder icons already applied on macOS are file metadata.
+Preview and shortcut creation also read the selected local image. No online image
 conversion, account or network service is used.
+
+On macOS, custom-icon creation invokes `/usr/bin/osascript` with fixed,
+TypeScript-checked JavaScript for Automation code to call AppKit's file-icon API.
+Paths are passed as separate arguments, with a ten-second timeout and no shell,
+Finder UI automation, elevation, runtime installation or shortcut launching.
 
 Version 0.0.2 uses `.url` for both Windows destinations, following successful
 user testing of Start Menu pinning. Existing `.lnk` shortcuts remain untouched;

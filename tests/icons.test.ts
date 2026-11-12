@@ -4,38 +4,12 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { deflateSync } from 'node:zlib';
 import { promisify } from 'node:util';
 import { createIco, ICON_SIZES, storeIcon, validateIco, validateIconPath } from '../src/icons';
 import { serializeUrl, writeShortcut, writeTagShortcut } from '../src/shortcuts/files';
 import { windowsPowerShellPath } from '../src/shortcuts/desktop';
 
-function pngChunk(type: string, data: Buffer): Buffer {
-  const content = Buffer.concat([Buffer.from(type), data]);
-  let crc = 0xffffffff;
-  for (const byte of content) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  const header = Buffer.alloc(4);
-  const trailer = Buffer.alloc(4);
-  header.writeUInt32BE(data.length);
-  trailer.writeUInt32BE((crc ^ 0xffffffff) >>> 0);
-  return Buffer.concat([header, content, trailer]);
-}
-
-function transparentPng(size: number): Buffer {
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(size, 0);
-  header.writeUInt32BE(size, 4);
-  header[8] = 8;
-  header[9] = 6;
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    pngChunk('IHDR', header), pngChunk('IDAT', deflateSync(Buffer.alloc(size * (size * 4 + 1)))),
-    pngChunk('IEND', Buffer.alloc(0)),
-  ]);
-}
+import { transparentPng } from './png-fixture';
 
 const icon = (): Buffer => createIco(ICON_SIZES.map(size => ({ size, png: transparentPng(size) })));
 

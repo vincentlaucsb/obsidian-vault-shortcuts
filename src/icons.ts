@@ -1,10 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { isAbsolute, join, win32 } from 'node:path';
+import { isAbsolute, join, posix, win32 } from 'node:path';
+import { homedir } from 'node:os';
 import { setTimeout } from 'node:timers/promises';
 
 export const ICON_SIZES = [16, 32, 48, 256] as const;
+export const PNG_ICON_SIZE = 512;
+export type IconPlatform = 'windows' | 'macos' | 'linux';
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -15,7 +18,23 @@ export function validateIconPath(path: string): void {
   }
 }
 
-export function getIconDirectory(): string {
+export function validatePosixIconPath(path: string): void {
+  if (!posix.isAbsolute(path) || Array.from(path).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
+    throw new Error('The icon must have an absolute filesystem path without control characters.');
+  }
+}
+
+export function getIconDirectory(platform: IconPlatform = 'windows', home = homedir()): string {
+  if (platform === 'macos') {
+    validatePosixIconPath(home);
+    return posix.join(home, 'Library', 'Application Support', 'VaultShortcuts', 'Icons');
+  }
+  if (platform === 'linux') {
+    const configured = process.env.XDG_DATA_HOME;
+    const root = configured && posix.isAbsolute(configured) ? configured : posix.join(home, '.local', 'share');
+    validatePosixIconPath(root);
+    return posix.join(root, 'vault-shortcuts', 'icons');
+  }
   const local = process.env.LOCALAPPDATA;
   if (!local) throw new Error('Windows local application data is unavailable. Choose the standard Obsidian icon.');
   validateIconPath(local);
@@ -106,13 +125,29 @@ export function createIco(frames: readonly { size: number; png: Uint8Array }[]):
   return result;
 }
 
+export function validatePngIcon(input: Uint8Array): void {
+  const data = Buffer.from(input);
+  if (data.length > MAX_IMAGE_BYTES) throw new Error('The icon is too large. Choose another image.');
+  validatePng(data, PNG_ICON_SIZE, PNG_ICON_SIZE);
+}
+
+export async function storePngIcon(input: Uint8Array, platform: 'macos' | 'linux', directory = getIconDirectory(platform)): Promise<string> {
+  const data = Buffer.from(input);
+  validatePngIcon(data);
+  return storeIconAsset(data, directory, 'png');
+}
+
 export async function storeIcon(input: Uint8Array, directory = getIconDirectory()): Promise<string> {
   const data = Buffer.from(input);
   validateIco(data);
+  return storeIconAsset(data, directory, 'ico');
+}
+
+async function storeIconAsset(data: Buffer, directory: string, extension: 'ico' | 'png'): Promise<string> {
   if (!isAbsolute(directory)) throw new Error('Icon storage must be an absolute directory.');
-  await mkdir(directory, { recursive: true });
+  await mkdir(directory, { recursive: true, mode: 0o700 });
   if (!(await lstat(directory)).isDirectory()) throw new Error('Icon storage is not a local directory.');
-  const destination = join(directory, `${createHash('sha256').update(data).digest('hex')}.ico`);
+  const destination = join(directory, `${createHash('sha256').update(data).digest('hex')}.${extension}`);
   const temporary = join(directory, `${randomUUID()}.tmp`);
   await writeFile(temporary, data, { flag: 'wx', mode: 0o600 });
   try {

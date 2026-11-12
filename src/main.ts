@@ -172,7 +172,6 @@ export default class VaultShortcuts extends Plugin {
   }
 
   private async resolveIcon(selection: IconSelection): Promise<string | undefined> {
-    if (!Platform.isWin) return undefined;
     const path = selection.mode === 'custom' ? selection.path : selection.mode === 'default' ? this.defaultIcon : undefined;
     if (path) {
       try { await readIcon(path); }
@@ -230,7 +229,6 @@ class VaultShortcutsSettings extends PluginSettingTab {
       },
     }, {
       name: 'Default shortcut icon',
-      visible: Platform.isWin,
       desc: 'Choose an icon for new shortcuts in this vault. Existing shortcuts keep their icons.',
       render: setting => {
         setting.setClass('vault-shortcuts-stacked-setting');

@@ -126,7 +126,7 @@ export class ShortcutOptionsModal extends Modal {
     if (Platform.isWin) new Setting(generalPanel).setName('Destination').addDropdown(dropdown => dropdown
       .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue(target)
       .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
-    if (Platform.isWin) {
+    {
       const setting = new Setting(generalPanel).setName('Shortcut icon');
       const custom = generalPanel.createDiv();
       const group = `vault-shortcuts-icon-${++nextDialog}`;

@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { buildObsidianUri, buildTagSearchUri } from './uri';
 import type { ShortcutOptions } from './IShortcutCreator';
-import { validateIconPath } from '../icons';
+import { validateIconPath, validatePosixIconPath } from '../icons';
 import { buildShortcutUri } from './requests';
 import type { ShortcutContext, ShortcutRequest } from './requests';
 
@@ -32,11 +32,13 @@ export function serializeUrl(uri: string, options?: ShortcutOptions): string {
   return `[InternetShortcut]\r\nURL=${uri}\r\n${icon}`;
 }
 
-export function serializeDesktopLink(label: string, uri: string): string {
+export function serializeDesktopLink(label: string, uri: string, options?: ShortcutOptions): string {
   // Desktop Entry string escapes; URL is percent-encoded, not an Exec field.
   const name = label.replace(/\\/g, '\\\\').replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/ /g, '\\s');
-  return `[Desktop Entry]\nType=Link\nName=${name}\nURL=${uri}\nIcon=obsidian\n`;
+  if (options?.iconPath !== undefined) validatePosixIconPath(options.iconPath);
+  const icon = options?.iconPath?.replace(/\\/g, '\\\\').replace(/ /g, '\\s') ?? 'obsidian';
+  return `[Desktop Entry]\nType=Link\nName=${name}\nURL=${uri}\nIcon=${icon}\n`;
 }
 
 export async function writeShortcut(
@@ -45,7 +47,7 @@ export async function writeShortcut(
   if (!isAbsolute(desktop)) throw new Error('Desktop must be an absolute path.');
   const label = shortcutLabel(vaultName, notePath);
   const uri = buildObsidianUri(vaultName, notePath);
-  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri);
+  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
   return writeShortcutContent(desktop, format, label, content, format === 'url' && options?.iconPath !== undefined);
 }
 
@@ -55,7 +57,7 @@ export async function writeRequestShortcut(
 ): Promise<string> {
   if (!label.trim()) throw new Error('Enter a shortcut name.');
   const uri = buildShortcutUri(request, context);
-  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri);
+  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
   return writeShortcutContent(directory, format, label, content, format === 'url' && options?.iconPath !== undefined);
 }
 
@@ -86,6 +88,6 @@ export async function writeTagShortcut(
 ): Promise<string> {
   const label = `${vaultName} - Tag ${tag.slice(1)}`;
   const uri = buildTagSearchUri(vaultName, tag);
-  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri);
+  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
   return writeShortcutContent(directory, format, label, content, format === 'url' && options?.iconPath !== undefined);
 }

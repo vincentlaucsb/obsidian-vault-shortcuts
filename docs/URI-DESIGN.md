@@ -50,7 +50,7 @@ do not rely on the 1.15.1 beta's heading-only fallback.
 4. General — Shortcut name: editable display filename, independent of URI file targets;
    auto-suggest from action/target until the user edits it.
 5. General — Destination: Desktop; Start menu additionally on Windows.
-6. General — Icon on Windows: mutually exclusive vault default, custom image, Obsidian icon.
+6. General — Icon on every desktop OS: mutually exclusive vault default, custom image, Obsidian icon.
    Choosing custom reveals the existing picker and preview. Other-vault targets
    retain the standard-icon default, rather than inheriting Recipes' icon.
 7. Advanced — Action selector. Friendly labels with optional core action names in help text.
@@ -226,6 +226,12 @@ discovery. Do not scan other notes, internal registries or private vault IDs.
 ## Implementation decisions
 
 - Use stable Obsidian 1.15.0 as the new minimum.
+- Reuse the icon choices on every desktop OS. Windows retains multi-resolution
+  ICO and `.url` fields; Linux uses an absolute PNG `Icon` path, and macOS applies
+  the PNG as Finder metadata on the new `.url` through AppKit. Native macOS/Linux
+  display and launch behavior remain experimental until tested on those systems.
+  Storage is durable and device-local; copied Finder metadata may be lost through
+  incompatible tools/filesystems. See README for paths and external access.
 - Keep Hook/callbacks and absolute-path targeting in advanced controls.
 - Keep normal daily shortcuts governed by Daily notes settings; expose unusual
   inherited parameters only after their behavior has been demonstrated.
@@ -235,7 +241,7 @@ discovery. Do not scan other notes, internal registries or private vault IDs.
 ## Verification record
 
 Implemented November 11, 2026. Strict TypeScript, official lint with zero warnings,
-36 automated tests, and production build are checked locally on Windows. The real
+44 automated tests, and production build are checked locally on Windows. The real
 modal regression exercises active/inactive fields, all action groups, copy,
 clipboard deferral, immutable note context, attachment restrictions, custom-icon
 state, filename independence, and async close/retry guards.

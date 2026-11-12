@@ -1,18 +1,26 @@
-import { Notice, Setting } from 'obsidian';
+import { Notice, Platform, Setting } from 'obsidian';
 import { readFile, stat } from 'node:fs/promises';
-import { createIco, ICON_SIZES, MAX_IMAGE_BYTES, storeIcon, validateIco, validateIconPath } from './icons';
+import { createIco, ICON_SIZES, MAX_IMAGE_BYTES, PNG_ICON_SIZE, storeIcon, storePngIcon, validateIco, validateIconPath, validatePngIcon, validatePosixIconPath } from './icons';
+import type { IconPlatform } from './icons';
 
 export type IconSelection = { mode: 'default' } | { mode: 'standard' } | { mode: 'custom'; path: string };
 
+function iconPlatform(): IconPlatform {
+  return Platform.isWin ? 'windows' : Platform.isMacOS ? 'macos' : 'linux';
+}
+
 export async function readIcon(path: string): Promise<Buffer> {
-  validateIconPath(path);
+  const windows = Platform.isWin;
+  if (windows) validateIconPath(path);
+  else validatePosixIconPath(path);
   if ((await stat(path)).size > MAX_IMAGE_BYTES) throw new Error('Icon file is too large. Choose another image.');
   const data = await readFile(path);
-  validateIco(data);
+  if (windows) validateIco(data);
+  else validatePngIcon(data);
   return data;
 }
 
-async function importImage(file: File, workspace: HTMLElement): Promise<string> {
+async function importImage(file: File, workspace: HTMLElement, platform: IconPlatform): Promise<string> {
   if (!/\.(png|jpe?g|ico)$/i.test(file.name)) throw new Error('Choose a PNG, JPEG or ICO image.');
   if (file.size > MAX_IMAGE_BYTES) throw new Error('Choose an image smaller than 20 MB.');
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -31,8 +39,8 @@ async function importImage(file: File, workspace: HTMLElement): Promise<string> 
   if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 40_000_000) {
     throw new Error('Choose an image with at most 40 million pixels.');
   }
-  if (ico) return storeIcon(bytes);
-  const frames = ICON_SIZES.map(size => {
+  if (ico && platform === 'windows') return storeIcon(bytes);
+  const frames = (platform === 'windows' ? ICON_SIZES : [PNG_ICON_SIZE]).map(size => {
     const canvas = workspace.createEl('canvas');
     canvas.width = size; canvas.height = size;
     const context = canvas.getContext('2d');
@@ -42,7 +50,7 @@ async function importImage(file: File, workspace: HTMLElement): Promise<string> 
     context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
     return { size, png: Buffer.from(canvas.toDataURL('image/png').split(',')[1], 'base64') };
   });
-  return storeIcon(createIco(frames));
+  return platform === 'windows' ? storeIcon(createIco(frames)) : storePngIcon(frames[0].png, platform);
 }
 
 export function addIconControl(
@@ -53,6 +61,7 @@ export function addIconControl(
   let selection = initial;
   let busy = false;
   let revision = 0;
+  const platform = iconPlatform();
   const setting = new Setting(container).setName('Shortcut icon');
   // The input must belong to the window receiving the user's click. Global
   // createEl can use the main vault document when Settings is in a popout.
@@ -69,7 +78,7 @@ export function addIconControl(
     try {
       const bytes = await readIcon(path);
       if (revision !== current || !container.isConnected) return;
-      preview.src = `data:image/x-icon;base64,${bytes.toString('base64')}`;
+      preview.src = `data:image/${platform === 'windows' ? 'x-icon' : 'png'};base64,${bytes.toString('base64')}`;
       preview.hidden = false;
     } catch {
       if (revision === current && container.isConnected) status.setText('Icon unavailable on this computer. Choose an image or use the Obsidian icon.');
@@ -88,7 +97,7 @@ export function addIconControl(
       busy = true; button.setDisabled(true);
       const workspace = container.createDiv();
       workspace.hidden = true;
-      void importImage(file, workspace).then(async path => {
+      void importImage(file, workspace, platform).then(async path => {
         if (container.isConnected) await apply({ mode: 'custom', path });
       }).catch((error: unknown) => {
         if (container.isConnected) new Notice(`Could not import icon: ${error instanceof Error ? error.message : String(error)}`);

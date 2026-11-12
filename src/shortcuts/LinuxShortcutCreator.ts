@@ -8,15 +8,15 @@ export class LinuxShortcutCreator implements IShortcutCreator {
     return writeRequestShortcut(await getLinuxDesktop(), 'desktop', request, label, options, context);
   }
 
-  async createTagShortcut(vaultName: string, tag: string): Promise<string> {
-    return writeTagShortcut(await getLinuxDesktop(), 'desktop', vaultName, tag);
+  async createTagShortcut(vaultName: string, tag: string, options?: ShortcutOptions): Promise<string> {
+    return writeTagShortcut(await getLinuxDesktop(), 'desktop', vaultName, tag, options);
   }
 
-  async createVaultShortcut(vaultName: string): Promise<string> {
-    return writeShortcut(await getLinuxDesktop(), 'desktop', vaultName);
+  async createVaultShortcut(vaultName: string, options?: ShortcutOptions): Promise<string> {
+    return writeShortcut(await getLinuxDesktop(), 'desktop', vaultName, undefined, options);
   }
 
-  async createNoteShortcut(vaultName: string, notePath: string): Promise<string> {
-    return writeShortcut(await getLinuxDesktop(), 'desktop', vaultName, notePath);
+  async createNoteShortcut(vaultName: string, notePath: string, options?: ShortcutOptions): Promise<string> {
+    return writeShortcut(await getLinuxDesktop(), 'desktop', vaultName, notePath, options);
   }
 }
