@@ -4,6 +4,7 @@ export type UriAction = 'open' | 'new' | 'append' | 'prepend' | 'replace' | 'dai
 export type Pane = '' | 'tab' | 'split' | 'window';
 export interface UriDraft {
   vault: string;
+  vaultReference: 'name' | 'id';
   file: string;
   name: string;
   targetMode: 'vault' | 'file' | 'path' | 'name';
@@ -36,7 +37,7 @@ export function availableActions(context: ShortcutContext): UriAction[] {
 
 export function initialDraft(context: ShortcutContext, action: UriAction): UriDraft {
   return {
-    vault: context.kind === 'file' ? context.vault : context.currentVault,
+    vault: context.kind === 'file' ? context.vault : context.currentVault, vaultReference: 'name',
     file: context.kind === 'file' ? context.file : '', name: '',
     targetMode: context.kind === 'file' || ['append', 'prepend', 'replace'].includes(action) ? 'file' : action === 'new' ? 'name' : 'vault',
     path: '', navigation: 'none', anchor: '', contentSource: action === 'new' || action === 'daily' ? 'none' : 'text',
@@ -46,7 +47,8 @@ export function initialDraft(context: ShortcutContext, action: UriAction): UriDr
 
 export function requestFromDraft(action: UriAction, draft: UriDraft, context: ShortcutContext): ShortcutRequest {
   if (!availableActions(context).includes(action)) throw new Error('This action cannot target the clicked file.');
-  const vault = context.kind === 'file' ? context.vault : action === 'new' ? context.currentVault : draft.vault;
+  if (context.kind === 'file' && draft.vaultReference === 'id' && !context.vaultId) throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
+  const vault = context.kind === 'file' ? draft.vaultReference === 'id' ? context.vaultId ?? context.vault : context.vault : action === 'new' ? context.currentVault : draft.vault;
   const file = context.kind === 'file' ? context.file : draft.file;
   const target = context.kind !== 'file' && draft.targetMode === 'path' ? { kind: 'path' as const, path: draft.path } :
     { kind: 'vault' as const, vault, ...(file && (context.kind === 'file' || draft.targetMode !== 'vault') ? { file } : {}) };

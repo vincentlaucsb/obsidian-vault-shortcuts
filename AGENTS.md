@@ -151,7 +151,11 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   URI behavior controls. Preserve edits when switching tabs and keep validation,
   launch effects and creation controls visible. In a note-origin dialog, fix both vault and clicked file, including
   for append/prepend/replace actions. Enforce context in the request model rather
-  than relying only on disabled UI. Generate writing URIs without directly editing
+  than relying only on disabled UI. Allow choosing the same vault's name (default)
+  or manually pasted vault ID; explain portability, rename and duplicate-name
+  tradeoffs plus device-local ID scope. Verify a pasted ID against the current
+  vault folder using the documented CLI before enabling ID-based creation. Allow
+  only the original name or host-verified ID in the bound request model. Generate writing URIs without directly editing
   notes or reading clipboard content during shortcut creation. The detailed draft
   is docs/URI-DESIGN.md. Preserve quick actions and provide the options dialog on
   every supported desktop OS, with destination/icon controls reflecting the OS.
@@ -201,6 +205,10 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 - Default to vault names for URI targets. Do not automatically retrieve IDs through
   undocumented `app.appId` or internal registry access; the lack of first-class
   public API support is the deciding constraint. Retain manual vault-ID entry.
+  Obsidian calls its 16-character identifier a vault ID, rather than a standard
+  UUID. For bound-file ID verification, use the existing hidden, bounded CLI runner
+  with `vault=<id> vault info=path` and compare canonical filesystem paths. Never
+  accept a different vault or silently fall back to name while ID mode is selected.
 - Preserve existing files: exclusive creation, retry collisions with suffixes,
   bounded retries, and report errors. Do not execute created shortcuts automatically.
 - Resolve the actual platform Desktop; do not silently write to a guessed directory.

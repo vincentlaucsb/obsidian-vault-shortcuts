@@ -10,6 +10,7 @@ interface Options {
   defaultIcon?: string;
   initialIcon?: IconSelection;
   target?: ShortcutDestination;
+  verifyVaultId?: (value: string) => Promise<string>;
   create: (request: ShortcutRequest, label: string, target: ShortcutDestination, icon: IconSelection) => Promise<boolean>;
 }
 type Factory = (options: Options) => Modal;
@@ -190,7 +191,13 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(uri(general).searchParams.get('x-error'), 'sample-app://error');
   general.close();
 
+  const vaultId = '1234567890abcdef';
+  let verificationChecks = 0;
   const bound = factory({ context: { kind: 'file', vault: 'Recipes', file: 'Meals/Clicked.md', markdown: true },
+    verifyVaultId: id => {
+      verificationChecks++;
+      return id === vaultId ? Promise.resolve(id) : Promise.reject(new Error('This ID belongs to a different vault.'));
+    },
     create: (request, label) => { creations.push(request); labels.push(label); return Promise.resolve(false); } });
   bound.open();
   await button('Advanced').click();
@@ -198,7 +205,25 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.ok(field('vault').inputs[0].disabled || field('vault').inputs[0].inputEl.readOnly);
   assert.ok(field('file').inputs[0].disabled || field('file').inputs[0].inputEl.readOnly);
   assert.ok(absent('target-mode'));
+  assert.equal(uri(bound).searchParams.get('vault'), 'Recipes');
+  await select('vault-reference', 'id');
+  assert.equal(button('Create shortcut').disabled, true);
+  await text('vault-id', 'Recipes');
+  await button('Verify ID').click();
+  assert.equal(verificationChecks, 0, 'Malformed IDs never reach the CLI boundary');
+  await text('vault-id', 'fedcba0987654321');
+  await button('Verify ID').click();
+  assert.equal(button('Create shortcut').disabled, true);
+  assert.ok(bound.contentEl.descendants().some(element => element.textContent.includes('different vault')));
+  await text('vault-id', ' 1234567890ABCDEF ');
+  await button('Verify ID').click();
+  assert.equal(uri(bound).searchParams.get('vault'), vaultId);
+  await select('vault-reference', 'name');
+  assert.equal(uri(bound).searchParams.get('vault'), 'Recipes');
+  await select('vault-reference', 'id');
+  assert.equal(uri(bound).searchParams.get('vault'), vaultId, 'Switching modes preserves the verified ID');
   await select('action', 'append');
+  assert.equal(uri(bound).searchParams.get('vault'), vaultId, 'The identifier choice persists across actions');
   await button('General').click();
   await text('label', 'Custom shortcut filename');
   await button('Advanced').click();
@@ -228,6 +253,29 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.ok(absent('navigation'));
   assert.equal(uri(attachment).searchParams.get('file'), 'Meal.jpg');
   attachment.close();
+
+  let finishVerification: (value: string) => void = () => {};
+  const late = factory({ context: { kind: 'file', vault: 'Recipes', file: 'Clicked.md', markdown: true },
+    verifyVaultId: () => new Promise<string>(resolve => { finishVerification = resolve; }), create: () => Promise.resolve(true) });
+  late.open();
+  await button('Advanced').click();
+  await select('vault-reference', 'id');
+  await text('vault-id', vaultId);
+  const verifying = button('Verify ID').click();
+  assert.equal(button('Create shortcut').disabled, true);
+  await text('vault-id', 'fedcba0987654321');
+  finishVerification(vaultId);
+  await verifying;
+  assert.equal(button('Create shortcut').disabled, true, 'A stale result cannot verify edited input');
+  await select('vault-reference', 'name');
+  assert.equal(uri(late).searchParams.get('vault'), 'Recipes', 'Name mode remains available without verification');
+  await select('vault-reference', 'id');
+  await text('vault-id', vaultId);
+  const closedVerification = button('Verify ID').click();
+  late.close();
+  finishVerification(vaultId);
+  await closedVerification;
+  assert.equal(late.contentEl.children.length, 0, 'Late ID verification cannot repopulate a closed dialog');
 
   let finish: (value: boolean) => void = () => {};
   let pendingCalls = 0;

@@ -20,6 +20,12 @@ export class TFile {
   constructor(public path: string, public extension = 'md') {}
 }
 export class MarkdownView { file: TFile | null = null; }
+export class FileSystemAdapter { getBasePath(): string { return '/vault/Test vault'; } }
+export function verifyVaultId(id: string, path: string): Promise<string> {
+  assert.equal(path, '/vault/Test vault');
+  if (id !== '1234567890abcdef') return Promise.reject(new Error('This ID belongs to a different vault.'));
+  return Promise.resolve(id);
+}
 class MenuItem {
   title = '';
   callback: (() => void | Promise<void>) | undefined;
@@ -51,6 +57,7 @@ export class Plugin {
   readonly app = {
     workspace: new Workspace(),
     vault: {
+      adapter: new FileSystemAdapter(),
       files: new Map<string, TFile>(),
       getName: () => 'Test vault',
       getAbstractFileByPath(path: string): TFile | undefined { return this.files.get(path); },
@@ -201,6 +208,13 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
     'Options retain the clicked file and initial destination');
   assert.equal(await optionsDialog.create({ action: 'search', vault: 'Other' }, 'Bad', 'desktop', { mode: 'standard' }), false);
   assert.equal(creations.length, 0, 'An injected request cannot escape the clicked note context');
+  const idRequest: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: '1234567890abcdef', file: b.path } };
+  assert.equal(await optionsDialog.create(idRequest, 'Unverified', 'desktop', { mode: 'standard' }), false);
+  assert.ok(optionsDialog.verifyVaultId);
+  await assert.rejects(optionsDialog.verifyVaultId('fedcba0987654321'), /different vault/);
+  await optionsDialog.verifyVaultId('1234567890abcdef');
+  assert.equal(await optionsDialog.create(idRequest, 'Verified', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: '1234567890abcdef', path: b.path });
   icons.app.vault.files.delete(b.path);
   assert.equal(await optionsDialog.create(request, 'Stale', 'desktop', { mode: 'standard' }), false);
   assert.equal(creations.length, 0, 'A configured shortcut rechecks file existence before creation');

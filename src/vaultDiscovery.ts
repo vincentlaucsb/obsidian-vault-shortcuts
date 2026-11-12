@@ -20,12 +20,15 @@ export function discoveryErrorMessage(error: unknown): string {
   return `The Obsidian CLI could not complete the vault-list command. ${CLI_SETUP_HELP}`;
 }
 
+export function cliOutputLines(output: string): string[] {
+  return output.split(/\r?\n/).filter(line => line.trim() &&
+    !/^\d{4}-\d{2}-\d{2} .* Loading (?:updated )?app package /.test(line) &&
+    !line.startsWith('Your Obsidian installer is out of date.') && line !== 'https://obsidian.md/download');
+}
+
 export function parseVaultNames(output: string): string[] {
   const names: string[] = [];
-  for (const line of output.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    if (/^\d{4}-\d{2}-\d{2} .* Loading (?:updated )?app package /.test(line) ||
-      line.startsWith('Your Obsidian installer is out of date.') || line === 'https://obsidian.md/download') continue;
+  for (const line of cliOutputLines(output)) {
     const fields = line.split('\t');
     const [name, path] = fields;
     if (fields.length !== 2 || !name?.trim() || !path ||
@@ -52,7 +55,7 @@ export function runVaultCommand(executable: string, args: string[] = ['vaults', 
   });
 }
 
-export async function discoverVaults(windows: boolean): Promise<string[]> {
+export async function findObsidianCli(windows: boolean): Promise<string> {
   const candidates: string[] = [];
   // Prefer the CLI redirector beside the running Windows app, then its executable
   // for older installers. This also works when Obsidian inherited a stale PATH.
@@ -67,7 +70,11 @@ export async function discoverVaults(windows: boolean): Promise<string[]> {
   for (const candidate of candidates) {
     try { await access(candidate, windows ? constants.F_OK : constants.X_OK); }
     catch { continue; }
-    return parseVaultNames(await runVaultCommand(candidate));
+    return candidate;
   }
   throw new DiscoveryError('missing');
+}
+
+export async function discoverVaults(windows: boolean): Promise<string[]> {
+  return parseVaultNames(await runVaultCommand(await findObsidianCli(windows)));
 }

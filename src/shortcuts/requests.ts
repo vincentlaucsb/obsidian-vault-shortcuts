@@ -7,7 +7,15 @@ export type VaultFileTarget = { kind: 'vault'; vault: string; file?: string } | 
 export type NewNoteTarget = VaultFileTarget | { kind: 'name'; vault: string; name: string };
 export type ShortcutContext =
   | { readonly kind: 'general'; readonly currentVault: string }
-  | { readonly kind: 'file'; readonly vault: string; readonly file: string; readonly markdown: boolean };
+  | { readonly kind: 'file'; readonly vault: string; readonly file: string; readonly markdown: boolean;
+      /** Only populated after the host verifies the ID resolves to this vault. */
+      readonly vaultId?: string };
+
+export function normalizeVaultId(value: string): string {
+  const id = value.trim();
+  if (!/^[0-9a-f]{16}$/i.test(id)) throw new Error('Enter the 16-character vault ID copied from the vault switcher.');
+  return id.toLowerCase();
+}
 
 interface WriteFields {
   mode: WriteMode;
@@ -84,7 +92,9 @@ function checkContext(request: ShortcutRequest, context?: ShortcutContext): void
   if (!context) return;
   if (context.kind === 'file') {
     if (request.action !== 'open' && request.action !== 'new') throw new Error('This action cannot target the clicked file.');
-    if (request.target.kind !== 'vault' || request.target.vault !== context.vault || request.target.file !== context.file) {
+    if (request.target.kind !== 'vault' ||
+        (request.target.vault !== context.vault && (!context.vaultId || request.target.vault !== context.vaultId)) ||
+        request.target.file !== context.file) {
       throw new Error('The shortcut must keep the clicked file and its vault.');
     }
     if (!context.markdown && (request.action !== 'open' || request.navigation !== undefined)) {

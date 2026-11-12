@@ -27,6 +27,19 @@ target changes cannot escape these constraints. Heading/block suggestions use
 cached metadata; no note contents are read. **More options…** in tag and other-vault
 dialogs opens the builder with that search or vault already selected.
 
+For a clicked file, **Identify vault by** in Advanced defaults to **Vault name**.
+Names are readable and portable when devices use the same name; renames break
+links and duplicate names can be ambiguous. **Vault ID** addresses one registered
+vault folder on this computer. Treat IDs as device-local: synced copies, moves
+or re-registration may have different identifiers. Obsidian uses a 16-character
+vault ID, rather than a standard UUID. See the [official URI reference](https://obsidian.md/help/uri).
+
+To use ID mode, open the vault switcher, right-click the current vault, choose
+**Copy vault ID**, paste it and click **Verify ID**. Verification uses the official
+CLI to confirm that the ID resolves to this vault's folder. Creation stays disabled
+until verification succeeds; switching to name remains available without the CLI.
+The clicked file stays fixed in both modes. No internal vault registry is read.
+
 Content can be literal text or **Clipboard when launched**. Literal text is stored
 in the shortcut file, so do not embed sensitive text in shortcuts you share. The
 clipboard is not read during shortcut creation. Launching a writing shortcut can
@@ -165,6 +178,12 @@ filesystem APIs to create the shortcut. The Windows lookup invokes a hidden,
 noninteractive Windows PowerShell process; Mac/Linux use their system directory
 lookup commands. These use fixed code/arguments, never vault or note text as shell
 code, and have bounded execution time.
+
+Explicit **Verify ID** runs the documented Obsidian CLI command
+`vault=<id> vault info=path` with separate arguments and a 10-second timeout, then
+compares canonical vault-folder paths. It reads vault identity metadata only,
+without reading notes or using the clipboard. The entered ID is validated before
+launching the command. Name mode does not run this verification process.
 
 The Windows Start Menu action writes to your current user's Programs folder
 (usually `%APPDATA%\Microsoft\Windows\Start Menu\Programs`). PowerShell resolves

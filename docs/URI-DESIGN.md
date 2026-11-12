@@ -23,8 +23,9 @@ Fixed-note context:
   at the top, General for shortcut destination/icon, Advanced for URI controls.
 - The user confirmed a read-only live URI preview with Copy and structured
   controls, rather than editing/pasting arbitrary URIs.
-- The user confirmed writing actions in a note-context dialog. Vault and file
-  remain fixed to the clicked note. Navigation and writing are supported without
+- The user confirmed writing actions in a note-context dialog. Vault identity and file
+  remain fixed to the clicked note. Vault addressing can switch between its name
+  (default) and a manually pasted, host-verified ID. Navigation and writing are supported without
   allowing a shortcut to silently target a different vault or file.
 - Existing immediate creation actions remain convenient secondary paths.
 
@@ -152,14 +153,30 @@ as an integration action rather than promising a fixed-note shortcut.
 | Context | Target | Available actions | Disabled/omitted options |
 | --- | --- | --- | --- |
 | Notebook/general | Current vault initially; known-vault/manual name or ID when coherent | All core action groups | Create note stays in current vault per sketch. Manager has no vault. Absolute-path target is separate. |
-| Clicked Markdown note | Current vault + clicked file, read-only | Open, append, prepend, replace | Vault changes, replacement file/path, daily, unique, vault manager, Hook and vault-wide search. |
-| Clicked attachment | Current vault + clicked file, read-only | Open | Writing, heading/block and other unrelated actions. |
+| Clicked Markdown note | Current vault by name (default) or verified ID; clicked file read-only | Open, append, prepend, replace | Different vaults, replacement file/path, daily, unique, vault manager, Hook and vault-wide search. |
+| Clicked attachment | Current vault by name (default) or verified ID; clicked file read-only | Open | Writing, heading/block and other unrelated actions. |
 | Tag shortcut | Current vault + selected tag query initially | Search preset | No implied clicked-note write target. |
 
 Where disabled actions are visible, explain that they do not target this file.
 Do not merely disable a vault textbox: bind immutable context in the request
 model and validate it before writing. Recheck clicked-file identity immediately
 before creation; handle deletion/rename without silently using another note.
+
+In a clicked-file dialog, offer **Identify vault by: Vault name (default) / Vault
+ID (device-local)**. Explain each mode's strengths and pitfalls inline: names are
+readable and work across devices with matching names, but renames and duplicate
+names are problems; IDs distinguish local registered vaults but are device-local
+and may differ for synced copies, moves or re-registration. Use Obsidian's term
+"vault ID", not a standard UUID. The [official URI reference](https://obsidian.md/help/uri)
+describes its 16-character ID and Copy vault ID in the vault switcher.
+
+The installed public API has no ID getter. Accept manual paste from the vault
+switcher and explicitly verify it with the documented CLI command
+`vault=<id> vault info=path`, comparing canonical paths with the current
+FileSystemAdapter base path. Never read internal registries. Only enable ID-mode
+creation after success; invalid, unrelated, missing-CLI and stale asynchronous
+results cannot grant an alternate identity. Keep name mode available without the
+CLI. Share the identifier choice across action drafts for the same clicked file.
 
 Notebook/other-vault creation should share the builder without requiring the
 plugin to be installed in another vault. Keep manual names/IDs and bounded CLI

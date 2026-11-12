@@ -6,6 +6,19 @@ import type { ShortcutContext } from '../src/shortcuts/requests';
 
 const general: ShortcutContext = { kind: 'general', currentVault: 'Recipes' };
 
+void test('bound files default to their name and use only a host-verified ID when requested', () => {
+  const context: ShortcutContext = { kind: 'file', vault: 'Recipes', file: 'Dinner.md', markdown: true, vaultId: '1234567890abcdef' };
+  for (const action of ['open', 'append', 'prepend', 'replace'] as const) {
+    const draft = initialDraft(context, action);
+    assert.equal(draft.vaultReference, 'name');
+    draft.vault = 'Another vault';
+    assert.equal(new URL(buildShortcutUri(requestFromDraft(action, draft, context), context)).searchParams.get('vault'), 'Recipes');
+    draft.vaultReference = 'id';
+    assert.equal(new URL(buildShortcutUri(requestFromDraft(action, draft, context), context)).searchParams.get('vault'), context.vaultId);
+    assert.throws(() => requestFromDraft(action, draft, { ...context, vaultId: undefined }), /Verify this vault ID/);
+  }
+});
+
 void test('form requests use immutable clicked identities and restrict attachments to opening', () => {
   const note: ShortcutContext = { kind: 'file', vault: 'Recipes', file: 'Meals/Dinner.md', markdown: true };
   const draft = initialDraft(note, 'append');

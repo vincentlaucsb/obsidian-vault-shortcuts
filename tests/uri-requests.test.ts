@@ -10,6 +10,16 @@ import { writeRequestShortcut } from '../src/shortcuts/files';
 const fixed: ShortcutContext = { kind: 'file', vault: 'Recipes & café', file: 'Meals/雪 soup.md', markdown: true };
 const target = { kind: 'vault', vault: fixed.vault, file: fixed.file } as const;
 
+void test('fixed-file validation allows only the original name or verified ID for the same file', () => {
+  const context: ShortcutContext = { ...fixed, vaultId: '1234567890abcdef' };
+  const idTarget = { ...target, vault: context.vaultId ?? '' };
+  assert.doesNotThrow(() => buildShortcutUri({ action: 'open', target: idTarget }, context));
+  assert.doesNotThrow(() => buildShortcutUri({ action: 'new', target: idTarget, mode: 'replace', content: { kind: 'clipboard' } }, context));
+  assert.throws(() => buildShortcutUri({ action: 'open', target: idTarget }, fixed), /keep the clicked file/);
+  assert.throws(() => buildShortcutUri({ action: 'open', target: { ...idTarget, vault: 'fedcba0987654321' } }, context), /keep the clicked file/);
+  assert.throws(() => buildShortcutUri({ action: 'open', target: { ...idTarget, file: 'Other.md' } }, context), /keep the clicked file/);
+});
+
 function parameters(request: ShortcutRequest, context?: ShortcutContext): [string, string][] {
   return [...new URL(buildShortcutUri(request, context)).searchParams];
 }

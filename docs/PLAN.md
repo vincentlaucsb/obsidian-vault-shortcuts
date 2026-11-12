@@ -13,6 +13,24 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Bound-file vault identity (November 11, 2026):** the Advanced tab offers vault
+name (default) or manually pasted vault ID for the same clicked note/attachment.
+Explain that names are readable/portable when names match, but renames break links
+and duplicate names are ambiguous. A vault ID identifies a registered folder on
+one computer; synced copies, moves or re-registration may use different IDs.
+Use Obsidian's term "vault ID" (16 characters), rather than implying a standard UUID.
+There is no ID getter in the installed public API. Users copy the ID from the
+vault switcher; explicit Verify ID uses documented CLI `vault=<id> vault info=path`
+and canonical path comparison to bind it to the current filesystem vault. Name
+mode works without the CLI. The clicked file remains immutable in both modes;
+the model/writer accepts only the original name or a host-verified ID.
+Verified live on Obsidian 1.15.0: copy Recipes' ID from the vault manager, paste
+and verify it in the clicked-note dialog, switch name ↔ ID, and retain the ID when
+changing from Open to Append. URI previews retained the clicked file throughout;
+no shortcut was created or launched. Invalid-ID CLI lookup returned "Vault not
+found." All 40 tests, strict typecheck, official lint and build pass; independent
+subagent review found no actionable issues.
+
 **Settings layout (November 11, 2026):** put vault creation, default icon and
 other-vault button rows below their full-width labels and descriptions. Let button
 rows wrap within narrow settings panes; keep icon preview/actions together and
@@ -60,7 +78,7 @@ was launched. Bound-note/attachment controls and callback serialization have
 automated coverage; callback destination delivery and Mac/Linux host behavior
 remain unverified. Independent subagent review found no remaining actionable
 issues after UI-state and custom-preview fixes. Strict typecheck, official lint,
-36 tests and production build are the final local checks.
+40 tests and production build are the final local checks.
 
 **Windows custom icons and creation options (November 10, 2026, version 0.1.0):**
 The user agreed to [issue #1](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues/1)

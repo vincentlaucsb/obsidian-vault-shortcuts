@@ -1,4 +1,4 @@
-import { getAllTags, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile } from 'obsidian';
+import { FileSystemAdapter, getAllTags, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { ShortcutCreator } from './shortcuts/ShortcutCreator';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
@@ -12,6 +12,7 @@ import { readContextMenuOptions } from './settings';
 import type { ContextMenuOptions } from './settings';
 import { buildShortcutUri } from './shortcuts/requests';
 import type { ShortcutContext, ShortcutRequest } from './shortcuts/requests';
+import { verifyVaultId } from './vaultIdentity';
 
 export default class VaultShortcuts extends Plugin {
   private readonly creator = new ShortcutCreator();
@@ -124,12 +125,20 @@ export default class VaultShortcuts extends Plugin {
 
   openShortcutOptions(file?: TFile, target: ShortcutDestination = 'desktop'): void {
     const vault = this.app.vault.getName();
-    const context: ShortcutContext = file ? { kind: 'file', vault, file: file.path, markdown: file.extension.toLowerCase() === 'md' } :
+    let context: ShortcutContext = file ? { kind: 'file', vault, file: file.path, markdown: file.extension.toLowerCase() === 'md' } :
       { kind: 'general', currentVault: vault };
     new ShortcutOptionsModal(this.app, {
       context, defaultIcon: this.defaultIcon, target,
       headingSuggestions: file ? this.app.metadataCache.getFileCache(file)?.headings?.map(heading => heading.heading) : undefined,
       blockSuggestions: file ? Object.keys(this.app.metadataCache.getFileCache(file)?.blocks ?? {}) : undefined,
+      verifyVaultId: file ? async value => {
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) throw new Error('Vault ID verification requires a local filesystem vault. Use the vault name.');
+        const id = await verifyVaultId(value, adapter.getBasePath(), Platform.isWin);
+        if (context.kind !== 'file') throw new Error('Reopen the clicked file’s shortcut dialog.');
+        context = { ...context, vaultId: id };
+        return id;
+      } : undefined,
       create: (request, label, destination, icon) => this.createConfiguredShortcut(request, label, destination, icon, context, file),
     }).open();
   }

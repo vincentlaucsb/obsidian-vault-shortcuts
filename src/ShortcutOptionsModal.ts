@@ -3,7 +3,7 @@ import type { ButtonComponent, TextComponent } from 'obsidian';
 import { addIconControl } from './IconControl';
 import type { IconSelection } from './IconControl';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
-import { buildShortcutUri } from './shortcuts/requests';
+import { buildShortcutUri, normalizeVaultId } from './shortcuts/requests';
 import type { ShortcutContext, ShortcutRequest } from './shortcuts/requests';
 import { discoverVaults, discoveryErrorMessage } from './vaultDiscovery';
 import { ACTION_LABELS, availableActions, describeEffect, draftFromRequest, initialDraft, requestFromDraft } from './UriForm';
@@ -17,6 +17,7 @@ export interface ShortcutOptionsModalOptions {
   initialRequest?: ShortcutRequest;
   headingSuggestions?: readonly string[];
   blockSuggestions?: readonly string[];
+  verifyVaultId?: (value: string) => Promise<string>;
   create: (request: ShortcutRequest, label: string, destination: ShortcutDestination, icon: IconSelection) => Promise<boolean>;
 }
 
@@ -50,6 +51,13 @@ export class ShortcutOptionsModal extends Modal {
     let importing = (): boolean => false;
     let discovery: Promise<string[]> | undefined;
     let validateIcon = (): string | undefined => undefined;
+    let vaultReference: 'name' | 'id' = 'name';
+    let enteredVaultId = context.kind === 'file' ? context.vaultId ?? '' : '';
+    let verifiedVaultId = context.kind === 'file' ? context.vaultId : undefined;
+    let verifyingId = false;
+    let verificationRevision = 0;
+    let verificationStatus = '';
+    const currentContext = (): ShortcutContext => context.kind === 'file' ? { ...context, vaultId: verifiedVaultId } : context;
     const live = (): boolean => this.generation === generation;
     this.setTitle('Create shortcut with options');
     this.modalEl.addClass('vault-shortcuts-uri-modal');
@@ -166,7 +174,7 @@ export class ShortcutOptionsModal extends Modal {
       });
       dropdown.selectEl.setAttribute('data-uri-field', 'action');
     });
-    if (bound) advancedPanel.createEl('p', { text: context.markdown ? 'Vault and file stay fixed to the clicked note for both navigation and writing.' : 'Attachments support opening only. Vault and file stay fixed.', cls: 'vault-shortcuts-icon-status' });
+    if (bound) advancedPanel.createEl('p', { text: context.markdown ? 'Vault identity and file stay fixed to the clicked note for both navigation and writing.' : 'Attachments support opening only. Vault identity and file stay fixed.', cls: 'vault-shortcuts-icon-status' });
     const fields = advancedPanel.createDiv({ cls: 'vault-shortcuts-uri-fields' });
     const effect = this.contentEl.createEl('p', { cls: 'vault-shortcuts-uri-effect', attr: { 'aria-live': 'polite' } });
     const validation = this.contentEl.createEl('p', { cls: 'vault-shortcuts-uri-validation', attr: { role: 'status', 'aria-live': 'polite' } });
@@ -175,7 +183,7 @@ export class ShortcutOptionsModal extends Modal {
     footer.addButton(button => {
       createButton = button;
       button.setButtonText('Create shortcut').setCta().onClick(async () => {
-        if (busy || !live()) return;
+        if (busy || verifyingId || !live()) return;
         if (importing()) { new Notice('Wait for the icon import to finish.'); return; }
         refresh();
         if (!request || !label.trim() || validateIcon()) return;
@@ -198,8 +206,12 @@ export class ShortcutOptionsModal extends Modal {
       }
       effect.setText(describeEffect(action, draft));
       try {
-        request = requestFromDraft(action, draft, context);
-        uri = buildShortcutUri(request, context);
+        if (bound && vaultReference === 'id' && (!verifiedVaultId || enteredVaultId.trim().toLowerCase() !== verifiedVaultId)) {
+          throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
+        }
+        const identity = currentContext();
+        request = requestFromDraft(action, { ...draft, vaultReference }, identity);
+        uri = buildShortcutUri(request, identity);
         const iconError = validateIcon();
         if (iconError) throw new Error(iconError);
         if (!label.trim()) throw new Error('Enter a shortcut name.');
@@ -209,7 +221,7 @@ export class ShortcutOptionsModal extends Modal {
         validation.setText(error instanceof Error ? error.message : String(error));
       }
       preview.value = uri;
-      createButton?.setDisabled(busy || !request);
+      createButton?.setDisabled(busy || verifyingId || !request);
     };
     const renderFields = (): void => {
       fields.empty();
@@ -253,8 +265,48 @@ export class ShortcutOptionsModal extends Modal {
       const isWrite = ['new', 'append', 'prepend', 'replace', 'daily', 'unique'].includes(action);
       const fileAction = ['open', 'new', 'append', 'prepend', 'replace'].includes(action);
       const manager = action === 'choose-vault';
+      if (bound) {
+        select(fields, 'vault-reference', 'Identify vault by', vaultReference,
+          [['name', 'Vault name (default)'], ['id', 'Vault ID (device-local)']], value => {
+            vaultReference = value === 'id' ? 'id' : 'name'; renderFields();
+          });
+        fields.createEl('p', { cls: 'vault-shortcuts-icon-status', text: 'Name: readable and portable when vault names match across devices. Renaming the vault breaks the link; duplicate names can be ambiguous.' });
+        fields.createEl('p', { cls: 'vault-shortcuts-icon-status', text: 'ID: identifies one registered vault on this computer, avoiding duplicate-name ambiguity. Device-local: synced copies, moves or re-registration may have different identifiers.' });
+        if (vaultReference === 'id') {
+          let verifyButton: ButtonComponent | undefined;
+          let status: HTMLElement | undefined;
+          text(fields, 'vault-id', 'Vault ID', enteredVaultId, value => {
+            enteredVaultId = value; ++verificationRevision; verificationStatus = ''; verifiedVaultId = undefined;
+            status?.setText('');
+            verifyButton?.setDisabled(verifyingId || !this.options.verifyVaultId || !value.trim());
+          }, 'In the vault switcher, right-click this vault → Copy vault ID. Paste it here, then verify it belongs to this vault.');
+          const verify = new Setting(fields).setName('Verify vault ID').setDesc('Uses the official CLI to match the ID’s vault folder to this vault. Name mode does not require the CLI.');
+          verify.addButton(button => {
+            verifyButton = button;
+            button.setButtonText(verifyingId ? 'Verifying…' : 'Verify ID')
+              .setDisabled(verifyingId || !this.options.verifyVaultId || !enteredVaultId.trim()).onClick(async () => {
+                const check = this.options.verifyVaultId;
+                if (busy || verifyingId || !live() || !check) return;
+                let id: string;
+                try { id = normalizeVaultId(enteredVaultId); }
+                catch (error: unknown) { verificationStatus = error instanceof Error ? error.message : String(error); renderFields(); return; }
+                const revision = ++verificationRevision;
+                verifyingId = true; verifiedVaultId = undefined; verificationStatus = 'Verifying this vault ID…'; renderFields();
+                try {
+                  const result = await check(id);
+                  if (!live() || revision !== verificationRevision) return;
+                  if (result !== id) throw new Error('The verified ID did not match. Copy this vault’s ID and retry.');
+                  enteredVaultId = id; verifiedVaultId = id; verificationStatus = 'Verified: this ID belongs to the clicked file’s vault.';
+                } catch (error: unknown) {
+                  if (live() && revision === verificationRevision) verificationStatus = error instanceof Error ? error.message : String(error);
+                } finally { verifyingId = false; if (live()) renderFields(); }
+              });
+          });
+          status = fields.createEl('p', { cls: 'vault-shortcuts-icon-status', text: this.options.verifyVaultId ? verificationStatus : 'Vault ID verification is unavailable here. Use the vault name.', attr: { role: 'status', 'aria-live': 'polite' } });
+        }
+      }
       if (!manager && !(fileAction && !bound && active.targetMode === 'path')) {
-        const vault = text(fields, 'vault', 'Vault name or ID', bound ? context.vault : action === 'new' ? currentVault : active.vault,
+        const vault = text(fields, 'vault', bound ? 'Vault name' : 'Vault name or ID', bound ? context.vault : action === 'new' ? currentVault : active.vault,
           value => { active.vault = value; }, bound ? 'Fixed to the clicked file.' : action === 'new' ? 'New notes use the current vault.' : 'Use an exact known vault name or ID.', bound || action === 'new');
         if (!bound && action !== 'new') {
           const details = fields.createEl('details');
