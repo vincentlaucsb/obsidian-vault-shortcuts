@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated November 11, 2026. This is the consolidated plan for the feasibility
+Updated November 12, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -12,6 +12,24 @@ and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**Clipboard images (November 12, 2026):** add Paste image beside Choose image in
+the shared icon control. The explicit click reads supported image data from the
+owning window's Clipboard API and captures a fixed asset through the existing
+validation/conversion/preview/storage pipeline. No background reads, text/HTML
+parsing, URL fetching or clipboard-linked icon source. Empty/unsupported/denied
+reads and conversion failures preserve the current selection and explain the
+failure. Share busy guards with file import/reset actions, discard late results
+after close and remove temporary conversion elements on every path. URI content's
+"Clipboard when launched" remains deferred to Obsidian at launch.
+Live Windows verification in detached Recipes Settings copied the pot-pie bitmap
+from Paint, pasted it into a per-shortcut custom override and observed conversion,
+preview and enabled creation. Replacing the clipboard with URI text produced the
+expected explanation while preserving the pasted preview. Dialogs were canceled
+without creating a shortcut or changing the vault default. The other-vault
+dialog's image row also fits; the shared row stacks/wraps its buttons. Automated
+production-control coverage includes permission/unavailable/empty/text-only,
+oversized/malformed payload, concurrent read/file import and closed-dialog cases.
 
 **Cross-platform custom icons (November 11, 2026):** extend the same picker and
 vault/per-shortcut/tag/other-vault defaults to macOS and Linux. Preserve Windows

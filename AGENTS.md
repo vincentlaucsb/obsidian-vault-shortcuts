@@ -143,6 +143,12 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   distinguish vault default, custom image and the standard Obsidian icon.
   Other-vault shortcuts default to the Obsidian icon with an optional override,
   without automatically inheriting the current vault's custom icon.
+  Provide **Paste image** beside **Choose image…** using the owning window's
+  Clipboard API only on that explicit click. Capture image bytes immediately;
+  never poll the clipboard or retain a live clipboard source for an icon. Reuse
+  image validation/conversion/preview/storage, preserve selection on empty,
+  unsupported, denied or failed reads, and guard concurrent/closed-dialog results.
+  Do not interpret clipboard text, HTML, URLs or file paths as image imports.
   Create picker inputs and conversion elements in the control's owning document;
   detached Settings windows must not use main-window global DOM helpers.
 - 1.0.0 URI builder: use a read-only live URI preview with Copy and structured

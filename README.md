@@ -42,7 +42,8 @@ The clicked file stays fixed in both modes. No internal vault registry is read.
 
 Content can be literal text or **Clipboard when launched**. Literal text is stored
 in the shortcut file, so do not embed sensitive text in shortcuts you share. The
-clipboard is not read during shortcut creation. Launching a writing shortcut can
+clipboard payload for a writing action is not read during shortcut creation.
+The separate **Paste image** button reads an image only when clicked. Launching a writing shortcut can
 modify a note each time; Replace explicitly replaces its contents. Use an isolated
 test vault when trying writing actions. Callback destinations can receive note
 information and open another app when the shortcut is launched.
@@ -111,6 +112,14 @@ In plugin settings, **Default shortcut icon** lets you choose a PNG, JPG/JPEG or
 ICO image for new shortcuts in this vault. A preview shows the selected image.
 Existing quick creation actions use that default immediately; changing it does
 not update existing shortcuts. Recreate a shortcut to change its icon.
+
+**Paste image**, beside **Choose image…**, captures an image from the clipboard
+when clicked and imports it through the same preview, conversion and local storage
+pipeline. The resulting icon stays fixed when the clipboard changes. An empty,
+unsupported or inaccessible clipboard leaves the current selection unchanged and
+shows an explanation. Clipboard text, HTML, image URLs and copied file paths are
+not imported as images; copy the image itself or choose an image file instead.
+Image clipboard access depends on the host's Clipboard API and permissions.
 
 For a vault, choose **Create shortcut with options…** in plugin settings. For a
 file, choose that action in its context menu. The dialog lets you override the
@@ -184,6 +193,11 @@ No release or directory submission has been published as part of this implementa
 Use a test vault when trying a development build.
 
 ## Privacy and external file access
+
+The shared **Paste image** control reads clipboard image data only after an
+explicit click, through that control's owning window. It does not poll the
+clipboard, read text/HTML payloads, fetch clipboard URLs or write to the clipboard.
+Imported image assets follow the same storage and retention rules as chosen files.
 
 This plugin writes files **outside your vault, on your Desktop**, only when you
 invoke a creation action. It queries the system for that directory and uses Node

@@ -53,6 +53,9 @@ do not rely on the 1.15.1 beta's heading-only fallback.
 6. General — Icon on every desktop OS: mutually exclusive vault default, custom image, Obsidian icon.
    Choosing custom reveals the existing picker and preview. Other-vault targets
    retain the standard-icon default, rather than inheriting Recipes' icon.
+   Paste image captures clipboard image data on its explicit click through the
+   owning window, then uses the same durable import pipeline. It does not read
+   URI writing content, HTML/text or URLs and never tracks later clipboard changes.
 7. Advanced — Action selector. Friendly labels with optional core action names in help text.
 8. Advanced — Target and action fields. Hide irrelevant field groups; retain disabled
    identity fields and short explanations where the user should see the constraint.

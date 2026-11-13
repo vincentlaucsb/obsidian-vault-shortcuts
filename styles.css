@@ -28,6 +28,25 @@
   font-size: var(--font-ui-small);
 }
 
+.vault-shortcuts-icon-control {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-icon-control > .setting-item-control {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-icon-control button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+
 .vault-shortcuts-stacked-setting {
   flex-direction: column;
   align-items: stretch;
