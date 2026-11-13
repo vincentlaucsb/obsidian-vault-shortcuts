@@ -1,5 +1,5 @@
 import type { ShortcutContext, ShortcutRequest, WriteMode } from './shortcuts/requests';
-import { contextVault } from './shortcuts/requests';
+import { contextVault, folderSearchQuery } from './shortcuts/requests';
 
 export type UriAction = 'open' | 'new' | 'append' | 'prepend' | 'replace' | 'daily' | 'unique' | 'search' | 'choose-vault' | 'hook-get-address';
 export type Pane = '' | 'tab' | 'split' | 'window';
@@ -32,6 +32,7 @@ export const ACTION_LABELS: Readonly<Record<UriAction, string>> = {
 };
 
 export function availableActions(context: ShortcutContext): UriAction[] {
+  if (context.kind === 'folder') return ['new', 'search'];
   if (context.kind === 'file') return context.markdown ? ['open', 'append', 'prepend', 'replace'] : ['open'];
   return ['open', 'new', 'append', 'prepend', 'replace', 'daily', 'unique', 'search', 'choose-vault', 'hook-get-address'];
 }
@@ -42,7 +43,7 @@ export function initialDraft(context: ShortcutContext, action: UriAction): UriDr
     file: context.kind === 'file' ? context.file : '', name: '',
     targetMode: context.kind === 'file' || ['append', 'prepend', 'replace'].includes(action) ? 'file' : action === 'new' ? 'name' : 'vault',
     path: '', navigation: 'none', anchor: '', contentSource: 'clipboard',
-    text: '', heading: '', spacing: 'auto', silent: false, pane: '', query: '', dailyMode: 'open', xSuccess: '', xError: '',
+    text: '', heading: '', spacing: 'auto', silent: false, pane: '', query: context.kind === 'folder' ? folderSearchQuery(context.folder) : '', dailyMode: 'open', xSuccess: '', xError: '',
   };
 }
 
@@ -50,7 +51,10 @@ export function requestFromDraft(action: UriAction, draft: UriDraft, context: Sh
   if (!availableActions(context).includes(action)) throw new Error('This action cannot target the clicked file.');
   if (context.kind === 'file' && draft.vaultReference === 'id' && !context.vaultId) throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
   const vault = context.kind === 'file' && draft.vaultReference === 'id' ? context.vaultId ?? context.vault : contextVault(context);
-  const file = context.kind === 'file' ? context.file : draft.file;
+  if (context.kind === 'folder' && action === 'new' && (!draft.name.trim() || /[\\/#]/.test(draft.name) || draft.name === '.' || draft.name === '..')) {
+    throw new Error('Enter a note name without path separators, parent-directory segments or #.');
+  }
+  const file = context.kind === 'file' ? context.file : context.kind === 'folder' ? `${context.folder ? `${context.folder}/` : ''}${draft.name}` : draft.file;
   if (context.kind === 'general' && draft.targetMode === 'path') throw new Error('Absolute paths cannot override the fixed vault in shortcut options.');
   const target = { kind: 'vault' as const, vault, ...(file && (context.kind === 'file' || draft.targetMode !== 'vault') ? { file } : {}) };
   const paneType = draft.pane || undefined;
@@ -58,7 +62,7 @@ export function requestFromDraft(action: UriAction, draft: UriDraft, context: Sh
   const xSuccess = draft.xSuccess || undefined;
   if (action === 'choose-vault') return { action };
   if (action === 'hook-get-address') return { action, vault: vault || undefined, xSuccess, xError: draft.xError || undefined };
-  if (action === 'search') return { action, vault, query: draft.query };
+  if (action === 'search') return { action, vault, query: context.kind === 'folder' ? folderSearchQuery(context.folder) : draft.query };
   if (action === 'open') {
     const hasFile = Boolean(target.file);
     const path = target.file ?? '';
@@ -74,7 +78,7 @@ export function requestFromDraft(action: UriAction, draft: UriDraft, context: Sh
     silent: action === 'daily' && draft.dailyMode === 'open' ? undefined : draft.silent || undefined,
     ...(draft.silent && !(action === 'daily' && draft.dailyMode === 'open') ? {} : { paneType }), xSuccess };
   if (action === 'daily') return { action, vault, ...writing };
-  const newTarget = action === 'new' && draft.targetMode === 'name' ? { kind: 'name' as const, vault, name: draft.name } : target;
+  const newTarget = context.kind === 'folder' ? { kind: 'vault' as const, vault, file } : action === 'new' && draft.targetMode === 'name' ? { kind: 'name' as const, vault, name: draft.name } : target;
   return { action: 'new', target: newTarget, ...writing };
 }
 
@@ -87,7 +91,10 @@ export function draftFromRequest(request: ShortcutRequest, context: ShortcutCont
     else {
       draft.vault = request.target.vault;
       if (request.target.kind === 'name') { draft.targetMode = 'name'; draft.name = request.target.name; }
-      else if (request.target.file) { draft.targetMode = 'file'; draft.file = request.target.file; }
+      else if (request.target.file) {
+        draft.targetMode = 'file'; draft.file = request.target.file;
+        if (context.kind === 'folder') draft.name = request.target.file.split('/').pop() ?? '';
+      }
     }
   }
   if ('navigation' in request && request.navigation) { draft.navigation = request.navigation.kind; draft.anchor = request.navigation.value; }

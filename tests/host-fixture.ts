@@ -19,6 +19,10 @@ export class Notice {
 export class TFile {
   constructor(public path: string, public extension = 'md') {}
 }
+export class TFolder {
+  constructor(public path: string) {}
+  isRoot(): boolean { return this.path === '/'; }
+}
 export class MarkdownView { file: TFile | null = null; }
 export class FileSystemAdapter { getBasePath(): string { return '/vault/Test vault'; } }
 export function verifyVaultId(id: string, path: string): Promise<string> {
@@ -39,7 +43,7 @@ export class Menu {
     const item = new MenuItem(); build(item); this.items.push(item);
   }
 }
-type FileHandler = (menu: Menu, file: TFile) => void;
+type FileHandler = (menu: Menu, file: TFile | TFolder) => void;
 type EditorHandler = (menu: Menu, editor: unknown, info: { file: TFile }) => void;
 class Workspace {
   active = new MarkdownView();
@@ -58,9 +62,11 @@ export class Plugin {
     workspace: new Workspace(),
     vault: {
       adapter: new FileSystemAdapter(),
-      files: new Map<string, TFile>(),
+      files: new Map<string, TFile | TFolder>(),
+      root: new TFolder('/'),
+      getRoot(): TFolder { return this.root; },
       getName: () => 'Test vault',
-      getAbstractFileByPath(path: string): TFile | undefined { return this.files.get(path); },
+      getAbstractFileByPath(path: string): TFile | TFolder | undefined { return this.files.get(path); },
     },
     metadataCache: {
       entries: new Map<TFile, TestMetadata>(),
@@ -84,6 +90,8 @@ export { Modal, Setting } from './modal-fixture';
 class Creator {
   constructor(private readonly os: string) {}
   createShortcut(request: ShortcutRequest, _label: string, options?: ShortcutOptions, _context?: ShortcutContext): Promise<string> {
+    if (request.action === 'new' && request.target.kind === 'vault' && request.target.file) return this.createNoteShortcut(request.target.vault, request.target.file, options);
+    if (request.action === 'search') return this.createNoteShortcut(request.vault, request.query ?? '', options);
     if (request.action !== 'open' || request.target.kind !== 'vault') throw new Error('Unexpected host fixture request');
     return request.target.file ? this.createNoteShortcut(request.target.vault, request.target.file, options) :
       this.createVaultShortcut(request.target.vault, options);
@@ -138,8 +146,34 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
     assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: attachment.path });
   }
   const folderMenu = new Menu();
-  plugin.app.workspace.fileHandler?.(folderMenu, { path: 'Attachments', extension: '' });
-  assert.equal(folderMenu.items.length, 0, 'Folders must not get file shortcut actions');
+  const folder = new TFolder('Meals & café');
+  plugin.app.vault.files.set(folder.path, folder);
+  plugin.app.workspace.fileHandler?.(folderMenu, folder);
+  plugin.app.workspace.fileHandler?.(folderMenu, folder);
+  assert.deepEqual(folderMenu.items.map(item => item.title), ['Create folder shortcut…'], 'Folders get one options action, without file/tag actions or duplicates');
+  await folderMenu.items[0].callback?.();
+  const folderOptions = optionDialogs.at(-1);
+  assert.ok(folderOptions);
+  assert.deepEqual(folderOptions.context, { kind: 'folder', vault: 'Test vault', folder: folder.path });
+  const folderRequest: ShortcutRequest = { action: 'new', target: { kind: 'vault', vault: 'Test vault', file: `${folder.path}/Soup.md` }, mode: 'create', content: { kind: 'clipboard' } };
+  assert.equal(await folderOptions.create(folderRequest, 'Soup', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: `${folder.path}/Soup.md` });
+  assert.equal(await folderOptions.create({ ...folderRequest, target: { kind: 'vault', vault: 'Test vault', file: 'Elsewhere/Soup.md' } }, 'Escape', 'desktop', { mode: 'standard' }), false);
+  folder.path = 'Renamed';
+  assert.equal(await folderOptions.create(folderRequest, 'Stale folder', 'desktop', { mode: 'standard' }), false);
+  folder.path = 'Meals & café';
+  plugin.app.vault.files.set(folder.path, new TFolder(folder.path));
+  assert.equal(await folderOptions.create(folderRequest, 'Replaced folder', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0);
+  const rootMenu = new Menu();
+  plugin.app.workspace.fileHandler?.(rootMenu, plugin.app.vault.root);
+  await rootMenu.items[0].callback?.();
+  const rootOptions = optionDialogs.at(-1);
+  assert.ok(rootOptions);
+  assert.deepEqual(rootOptions.context, { kind: 'folder', vault: 'Test vault', folder: '' });
+  const rootRequest: ShortcutRequest = { ...folderRequest, target: { kind: 'vault', vault: 'Test vault', file: 'Soup.md' } };
+  assert.equal(await rootOptions.create(rootRequest, 'Root note', 'desktop', { mode: 'standard' }), true, 'Root uses the public getRoot API rather than a path registry entry');
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: 'Soup.md' });
   plugin.app.vault.files.delete(b.path);
   await menu.items[0].callback?.();
   assert.equal(creations.length, 0);
@@ -162,6 +196,13 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
       configured.app.workspace.fileHandler?.(fileMenu, a);
       configured.app.workspace.editorHandler?.(editorMenu, undefined, { file: a });
       assert.equal(fileMenu.items.length, Number(desktop) + Number(startMenu) + Number(desktop || startMenu));
+      const configuredFolderMenu = new Menu();
+      configured.app.workspace.fileHandler?.(configuredFolderMenu, folder);
+      assert.equal(configuredFolderMenu.items.length, Number(desktop || startMenu), 'Folder options follow destination visibility toggles');
+      if (desktop || startMenu) {
+        await configuredFolderMenu.items[0].callback?.();
+        assert.equal(optionDialogs.at(-1)?.target, desktop ? 'desktop' : 'start-menu');
+      }
       assert.equal(editorMenu.items.length, 0, 'Editor menus must stay unchanged for every toggle combination');
       const reloaded = createPlugin(); reloaded.data = configured.data;
       await reloaded.onload();

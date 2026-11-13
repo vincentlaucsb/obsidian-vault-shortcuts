@@ -13,6 +13,32 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Folder shortcuts (November 12, 2026):** add one Create folder shortcut… action
+to folder context menus, controlled by the existing Desktop/Windows Start Menu
+visibility toggles. Reuse General/Advanced and the fixed preview. Default to
+Create a note with Clipboard when launched; ask for a note basename and generate
+the core new URI's vault-relative file path directly inside the clicked folder.
+Offer Search this folder as the other action, including descendants with an
+anchored escaped, explicitly case-sensitive path regex. This is core Search, not a file-explorer folder-open
+action. Vault/folder stay read-only and are enforced through form, host, model
+and writer; reject alternate targets/actions and stale/renamed/replaced folders.
+Root folders work. Keep presets/drafts, icons and destination controls shared.
+No folder scans or direct note/content/clipboard reads are needed. This supersedes
+the original exclusion of folders from all shortcut menus.
+
+Production-control/model/writer/host coverage includes root, nested/Unicode names,
+target escapes, draft preservation, menu toggles, and moved/replaced folders.
+Live Windows verification in Recipes showed the Chicken context-menu action,
+fixed Recipes/Chicken fields, Clipboard default and a new/file URI with a supplied
+basename. Read-only core CLI Search checked the final case-sensitive query:
+Chicken returned 11 matching paths, chicken returned none, and Cast Iron Care
+returned its one matching path. Quote/operator and regex-punctuation folder
+strings produced no matches or parser errors. These host checks are separate from
+automated coverage; no shortcut or note was created or launched.
+All 50 tests, strict typecheck, zero-warning lint and production build pass.
+Independent subagent review found no remaining actionable issues after explicitly
+fixing case-sensitive folder searches and using getRoot() for root identity.
+
 **Options flow refinements (November 12, 2026):** fix the general options dialog
 to the current vault, or to the explicit selection passed by the other-vault
 dialog's More options action. Show that identity read-only and keep vault

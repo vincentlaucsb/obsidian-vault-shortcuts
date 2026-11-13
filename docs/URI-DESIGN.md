@@ -171,6 +171,7 @@ as an integration action rather than promising a fixed-note shortcut.
 | Other-vault More options | Explicit selection passed by the separate other-vault dialog, read-only | All core action groups | Every action, including Create note, retains the selection. No absolute paths or further vault selection in options. |
 | Clicked Markdown note | Current vault by name (default) or verified ID; clicked file read-only | Open, append, prepend, replace | Different vaults, replacement file/path, daily, unique, vault manager, Hook and vault-wide search. |
 | Clicked attachment | Current vault by name (default) or verified ID; clicked file read-only | Open | Writing, heading/block and other unrelated actions. |
+| Clicked folder | Current vault and folder, read-only | Create a note (default), Search this folder | Basename-only note creation directly in the folder; no other actions or target overrides. Search includes descendants using an anchored escaped path regex. |
 | Tag shortcut | Current vault + selected tag query initially | Search preset | No implied clicked-note write target. |
 
 Where disabled actions are visible, explain that they do not target this file.
@@ -202,6 +203,15 @@ vault IDs.
 
 ## Architecture and validation
 
+- Folder context uses core new/file for creation and search/query for folder
+  search. There is no documented folder-open URI. Both actions fix the clicked
+  vault/folder in the form, host, model and writer; empty root identity is valid.
+  New-note name is required, defaults to clipboard content and cannot contain
+  path separators or parent segments. Search query is read-only and generated
+  from the complete escaped folder prefix, including a boundary slash and explicit
+  match-case wrapper, so sibling names, case variants and regex/search syntax
+  cannot broaden it. Host rechecks the same folder
+  object/path after async icon validation. No notes are read or modified at setup.
 - Add a typed discriminated union for requests: open, note write, daily, unique,
   search, vault manager, Hook. Model text vs clipboard, write mode and target mode
   as exclusive choices. Keep immutable origin context separate from editable form.

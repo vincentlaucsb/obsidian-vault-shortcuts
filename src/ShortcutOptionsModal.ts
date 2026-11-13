@@ -29,12 +29,12 @@ export class ShortcutOptionsModal extends Modal {
   onOpen(): void {
     const generation = ++this.generation;
     const context = this.options.context;
-    const currentVault = context.kind === 'file' ? context.vault : context.currentVault;
+    const currentVault = context.kind === 'general' ? context.currentVault : context.vault;
     const fixedVault = contextVault(context);
     const bound = context.kind === 'file';
     const allowed = availableActions(context);
     const seeded = this.options.initialRequest ? draftFromRequest(this.options.initialRequest, context) : undefined;
-    let action: UriAction = seeded && allowed.includes(seeded.action) ? seeded.action : 'open';
+    let action: UriAction = seeded && allowed.includes(seeded.action) ? seeded.action : allowed[0];
     const drafts = new Map<UriAction, UriDraft>();
     if (seeded && allowed.includes(seeded.action)) drafts.set(seeded.action, seeded.draft);
     let draft = drafts.get(action) ?? initialDraft(context, action);
@@ -61,7 +61,7 @@ export class ShortcutOptionsModal extends Modal {
     this.setTitle('Create shortcut with options');
     this.modalEl.addClass('vault-shortcuts-uri-modal');
     this.contentEl.addClass('vault-shortcuts-uri-content');
-    this.contentEl.createEl('p', { text: bound ? `${fixedVault} / ${context.file}` : fixedVault, cls: 'vault-shortcuts-uri-origin' });
+    this.contentEl.createEl('p', { text: bound ? `${fixedVault} / ${context.file}` : context.kind === 'folder' ? `${fixedVault} / ${context.folder || '(vault root)'}` : fixedVault, cls: 'vault-shortcuts-uri-origin' });
     const previewSetting = new Setting(this.contentEl).setName('URI preview');
     const preview = previewSetting.controlEl.createEl('textarea', { cls: 'vault-shortcuts-uri-preview', attr: { 'aria-label': 'URI preview', rows: '3', spellcheck: 'false' } });
     preview.readOnly = true;
@@ -162,7 +162,7 @@ export class ShortcutOptionsModal extends Modal {
       validateIcon = () => mode === 'custom' && !customPath ? 'Choose an image for the custom icon.' : undefined;
     }
     new Setting(advancedPanel).setName('Action').addDropdown(dropdown => {
-      for (const item of allowed) dropdown.addOption(item, ACTION_LABELS[item]);
+      for (const item of allowed) dropdown.addOption(item, context.kind === 'folder' && item === 'search' ? 'Search this folder' : ACTION_LABELS[item]);
       dropdown.setValue(action).onChange(value => {
         const next = allowed.find(item => item === value);
         if (!next || busy) return;
@@ -199,11 +199,11 @@ export class ShortcutOptionsModal extends Modal {
     const refresh = (): void => {
       if (!live()) return;
       if (!nameEdited) {
-        const identity = bound ? context.file.split('/').pop() : draft.targetMode === 'file' ? draft.file : draft.targetMode === 'name' ? draft.name : fixedVault;
+        const identity = bound ? context.file.split('/').pop() : context.kind === 'folder' ? draft.name || context.folder.split('/').pop() || fixedVault : draft.targetMode === 'file' ? draft.file : draft.targetMode === 'name' ? draft.name : fixedVault;
         label = `${identity || fixedVault} - ${action === 'open' ? 'Obsidian' : ACTION_LABELS[action]}`;
         nameInput?.setValue(label);
       }
-      effect.setText(describeEffect(action, draft));
+      effect.setText(context.kind === 'folder' && action === 'search' ? 'When launched, searches the clicked folder and its subfolders. This does not expand a folder in the file explorer.' : describeEffect(action, draft));
       try {
         if (bound && vaultReference === 'id' && (!verifiedVaultId || enteredVaultId.trim().toLowerCase() !== verifiedVaultId)) {
           throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
@@ -306,7 +306,11 @@ export class ShortcutOptionsModal extends Modal {
       }
       if (!manager) text(fields, 'vault', bound ? 'Vault name' : 'Vault name or ID', fixedVault,
         () => {}, bound ? 'Fixed to the clicked file.' : 'Fixed to the vault selected before opening this dialog.', true);
-      if (fileAction) {
+      if (context.kind === 'folder') {
+        text(fields, 'folder', 'Folder', context.folder || '/', () => {}, 'Fixed to the clicked folder.', true);
+        if (action === 'new') text(fields, 'name', 'Note name', active.name, value => { active.name = value; }, 'Created directly in this folder when launched. Use a name with .md or no extension.');
+      }
+      if (fileAction && context.kind !== 'folder') {
         if (!bound) {
           const choices: [string, string][] = action === 'new' ? [['name', 'Default new-note location'], ['file', 'Vault-relative file path']] :
             action === 'open' ? [['vault', 'Vault only'], ['file', 'File in vault']] : [['file', 'File in vault']];
@@ -347,7 +351,7 @@ export class ShortcutOptionsModal extends Modal {
           }
         }
       }
-      if (action === 'search') text(fields, 'query', 'Search query', active.query, value => { active.query = value; }, 'Empty query opens search. Tag searches can use tag:#parent/child.');
+      if (action === 'search') text(fields, 'query', 'Search query', active.query, value => { active.query = value; }, context.kind === 'folder' ? 'Includes this folder and its subfolders; respects core Search exclusions.' : 'Empty query opens search. Tag searches can use tag:#parent/child.', context.kind === 'folder');
       if (action === 'daily') select(fields, 'daily-mode', 'When launched', active.dailyMode,
         [['open', 'Open today’s note'], ['append', 'Append'], ['prepend', 'Prepend'], ['replace', 'Replace contents']], value => {
           active.dailyMode = value === 'append' || value === 'prepend' || value === 'replace' ? value : 'open';

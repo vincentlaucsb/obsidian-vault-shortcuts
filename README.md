@@ -27,6 +27,14 @@ target changes cannot escape these constraints. Heading/block suggestions use
 cached metadata; no note contents are read. **More options…** in tag and other-vault
 dialogs opens the builder with that search or vault already selected.
 
+Right-click a folder and choose **Create folder shortcut…** to create a note
+directly inside it when the shortcut launches. Advanced defaults to **Create a
+note** with **Clipboard when launched**; enter the note name, with `.md` or no
+extension. The vault and clicked folder stay fixed. **Search this folder** instead
+opens core Search for that exact folder and its subfolders (case-sensitive), subject to Search exclusions;
+it does not expand the folder in the file explorer. Existing Desktop/Start menu
+context-menu toggles control visibility, and root-folder shortcuts work too.
+
 The vault in the options dialog is read-only: plugin settings use the current
 vault, while **More options…** from the other-vault dialog uses the vault selected
 there. Select a different vault in that separate dialog before opening options.

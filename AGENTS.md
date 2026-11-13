@@ -130,9 +130,18 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   loadData/saveData. Default all to enabled, validate stored booleans, and apply
   changes to file menus only. Do not register editor-menu shortcut actions. These toggles must not disable commands
   or settings-page creation actions.
-- File-menu actions support every TFile, including JPG/CSV attachments, while
-  excluding folders. Preserve full file extensions in URI targets. Keep the
+- File shortcut actions support every TFile, including JPG/CSV attachments.
+  Preserve full file extensions in URI targets. Keep the
   existing createNoteShortcut interface for compatibility; it accepts file paths.
+- Folder file menus have one Create folder shortcut… action when Desktop or the
+  available Windows Start Menu toggle is enabled. Reuse the options dialog,
+  defaulting to Create a note with Clipboard when launched, plus Search this
+  folder. Fix the clicked vault/folder in host/model/writer validation; ask for
+  a note basename and create directly inside that folder via the core new/file
+  URI. Search includes descendants using an anchored, escaped, explicitly
+  case-sensitive path regex, not a
+  folder-open URI. Root folders are supported. Reject stale/moved/replaced folders
+  before creation. No folder scans, direct note edits or new menu preference.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.
 - Windows custom icons (issue #1, version 0.1.0): preserve immediate creation with the

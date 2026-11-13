@@ -1,4 +1,4 @@
-import { FileSystemAdapter, getAllTags, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile } from 'obsidian';
+import { FileSystemAdapter, getAllTags, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, TFile, TFolder } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { ShortcutCreator } from './shortcuts/ShortcutCreator';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
@@ -49,6 +49,7 @@ export default class VaultShortcuts extends Plugin {
     });
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
       if (file instanceof TFile) this.addFileMenu(menu, file);
+      else if (file instanceof TFolder) this.addFolderMenu(menu, file);
     }));
   }
 
@@ -79,6 +80,19 @@ export default class VaultShortcuts extends Plugin {
             (tag, target, icon) => this.openPresetOptions({ action: 'search', vault: this.app.vault.getName(), query: `tag:${tag}` }, target, icon)).open();
         }));
     }
+  }
+
+  private addFolderMenu(menu: Menu, folder: TFolder): void {
+    if (this.populatedMenus.has(menu)) return;
+    this.populatedMenus.add(menu);
+    if (!this.contextMenuOptions.desktop && !(Platform.isWin && this.contextMenuOptions.startMenu)) return;
+    menu.addItem(item => item.setTitle('Create folder shortcut…').setIcon('folder-plus').onClick(() => {
+      const context: ShortcutContext = { kind: 'folder', vault: this.app.vault.getName(), folder: folder.isRoot() ? '' : folder.path };
+      new ShortcutOptionsModal(this.app, {
+        context, defaultIcon: this.defaultIcon, target: this.contextMenuOptions.desktop ? 'desktop' : 'start-menu',
+        create: (request, label, target, icon) => this.createConfiguredShortcut(request, label, target, icon, context, folder),
+      }).open();
+    }));
   }
 
   private getNoteTags(file: TFile): string[] {
@@ -154,13 +168,17 @@ export default class VaultShortcuts extends Plugin {
 
   private async createConfiguredShortcut(
     request: ShortcutRequest, label: string, target: ShortcutDestination, icon: IconSelection,
-    context: ShortcutContext, file?: TFile,
+    context: ShortcutContext, file?: TFile | TFolder,
   ): Promise<boolean> {
     try {
       buildShortcutUri(request, context);
       const options = { iconPath: await this.resolveIcon(icon) };
       if (context.kind === 'file' && (!file || file.path !== context.file || this.app.vault.getAbstractFileByPath(context.file) !== file)) {
         throw new Error('This file changed or no longer exists. Reopen its context menu and try again.');
+      }
+      if (context.kind === 'folder' && (!(file instanceof TFolder) || (file.isRoot() ? '' : file.path) !== context.folder ||
+          (file.isRoot() ? this.app.vault.getRoot() : this.app.vault.getAbstractFileByPath(file.path)) !== file)) {
+        throw new Error('This folder changed or no longer exists. Reopen its context menu and try again.');
       }
       const creator = target === 'start-menu' ? this.startMenuCreator : this.creator;
       const destination = await creator.createShortcut(request, label, options, context);

@@ -7,6 +7,7 @@ export type VaultFileTarget = { kind: 'vault'; vault: string; file?: string } | 
 export type NewNoteTarget = VaultFileTarget | { kind: 'name'; vault: string; name: string };
 export type ShortcutContext =
   | { readonly kind: 'general'; readonly currentVault: string; readonly targetVault?: string }
+  | { readonly kind: 'folder'; readonly vault: string; readonly folder: string }
   | { readonly kind: 'file'; readonly vault: string; readonly file: string; readonly markdown: boolean;
       /** Only populated after the host verifies the ID resolves to this vault. */
       readonly vaultId?: string };
@@ -18,7 +19,14 @@ export function normalizeVaultId(value: string): string {
 }
 
 export function contextVault(context: ShortcutContext): string {
-  return context.kind === 'file' ? context.vault : context.targetVault ?? context.currentVault;
+  return context.kind === 'general' ? context.targetVault ?? context.currentVault : context.vault;
+}
+
+/** Anchor the complete folder prefix; escape both regex and search delimiters. */
+export function folderSearchQuery(folder: string): string {
+  if (folder) relativePath(folder);
+  const prefix = folder ? `${folder}/` : '';
+  return `match-case:(path:/^${prefix.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}/)`;
 }
 
 interface WriteFields {
@@ -57,6 +65,11 @@ function filePath(value: string): string {
 
 function vaultPath(value: string): string {
   filePath(value);
+  return relativePath(value);
+}
+
+function relativePath(value: string): string {
+  required(value, 'Vault-relative path');
   if (value.startsWith('/') || value.includes('\\') || /^[a-z]:/i.test(value) ||
       value.split('/').some(part => !part || part === '.' || part === '..')) {
     throw new Error('Use a file path relative to the vault, without parent-directory segments.');
@@ -94,6 +107,17 @@ function callback(value: string): string {
 
 function checkContext(request: ShortcutRequest, context?: ShortcutContext): void {
   if (!context) return;
+  if (context.kind === 'folder') {
+    const query = folderSearchQuery(context.folder);
+    if (request.action === 'search' && request.vault === context.vault && request.query === query) return;
+    if (request.action === 'new' && request.mode === 'create' && request.target.kind === 'vault' &&
+        request.target.vault === context.vault && request.target.file !== undefined) {
+      const file = vaultPath(request.target.file);
+      const parent = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '';
+      if (parent === context.folder) return;
+    }
+    throw new Error('The shortcut must create a note directly in the clicked folder or search that folder.');
+  }
   if (context.kind === 'file') {
     if (request.action !== 'open' && request.action !== 'new') throw new Error('This action cannot target the clicked file.');
     if (request.target.kind !== 'vault' ||
