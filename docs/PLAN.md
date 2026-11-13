@@ -13,6 +13,31 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Playwright UI tests and listing assets (November 12, 2026):** add Windows
+real-Obsidian tests using a pinned 1.15.0 host, synthetic Recipe Box vaults and
+fresh per-test app/home/local profiles. Use the real copied production bundle and
+local CDP because direct Electron Node-inspector launch is unavailable in the
+installed package. Disable updates in the fixture only. Guard native subprocesses
+before imports, verify vault/profile/version, stub clipboard boundaries in each
+document, and keep actual controls/conversion/storage. The Create canary confirms
+Desktop resolution cannot escape the fixture. Bounded teardown closes only the
+owned process and deletes successful canonical fixture paths; failures retain
+traces/screenshots/profile logs. No personal profile or Recipes notes are used.
+
+`test:ui` covers seven workflows and three reviewed Windows visual baselines;
+`screenshots` reuses the same helpers for four light/dark listing scenes under
+docs/images/listing. Keep these assets separate from test goldens. Listing captures
+are inspected locally and README uses a relative image. Existing Linux CI runs
+fast checks/build/typechecks but does not launch the Windows UI suite. Native
+picker visibility, OS icon display/launching and Mac/Linux host behavior retain
+their existing verification limits. See [UI-TESTING.md](UI-TESTING.md).
+Final Windows validation: all 50 fast tests, seven real-host UI tests with three
+unchanged screenshot baselines, both listing-capture runs, strict typecheck,
+zero-warning official lint and production build pass. All eight generated listing
+images and three baselines were visually inspected. Independent review findings
+about early subprocess capture, bounded teardown and clipboard replacement were
+fixed and covered before pushing.
+
 **Folder shortcuts (November 12, 2026):** add one Create folder shortcut… action
 to folder context menus, controlled by the existing Desktop/Windows Start Menu
 visibility toggles. Reuse General/Advanced and the fixed preview. Default to

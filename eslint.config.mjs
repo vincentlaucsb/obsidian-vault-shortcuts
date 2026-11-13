@@ -5,7 +5,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig(
   globalIgnores([
     'node_modules/**', 'main.js', 'esbuild.config.mjs', 'package.json',
-    'package-lock.json', 'tsconfig.json',
+    'package-lock.json', 'tsconfig.json', '.test-build/**',
   ]),
   ...obsidianmd.configs.recommended,
   {

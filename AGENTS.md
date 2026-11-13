@@ -287,6 +287,21 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 ### UI verification
 
+- Use `npm run test:ui` for Windows real-host UI regressions and `npm run
+  screenshots` for listing assets. Tests live in tests/e2e/, baselines in its
+  __screenshots__ tree, listing assets under docs/images/listing/. Follow
+  docs/UI-TESTING.md. Pin the host/version/theme and keep synthetic fixtures
+  separate from personal profiles; never attach to Recipes for automation.
+- The isolated harness may bootstrap only its own synthetic vault/profile
+  metadata. Verify its vault/profile/version before actions. Block native process
+  boundaries before plugin imports (including captured promisify functions), and
+  stub clipboard access in each owning window. Test the guard with a real Create
+  attempt; it must fail before native destination resolution or file creation.
+  Close only the owned process, bound teardown and restrict cleanup to canonical
+  workspace fixture paths. Keep failure diagnostics and review changed baselines.
+- Listing captures reuse actual controls and fictional content. Inspect all
+  generated images; keep curated listing assets separate from regression goldens.
+  Generating them does not authorize publishing a listing or release.
 - Regression tests must exercise the production control responsible for the
   behavior being tested. Mock external boundaries such as storage or OS queries,
   rather than replacing the control itself.

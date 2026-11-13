@@ -4,6 +4,10 @@ Create Desktop shortcuts to an Obsidian vault, file or tag search.
 
 Windows also supports Start Menu shortcuts.
 
+![Create a shortcut with a custom icon](docs/images/listing/custom-icon-dark.png)
+
+[Light/dark screenshots and more workflows](docs/images/listing/README.md)
+
 ## URI shortcuts (1.0.0)
 
 Choose **Create shortcut with options…** in plugin settings or a file's context
@@ -327,6 +331,13 @@ URI construction and safe file creation are shared.
 Implementation lives in `src/`, with entry point `src/main.ts` and creators/helpers
 in `src/shortcuts/`. Tests and fixtures live in `tests/`. Build configuration and
 the generated `main.js` remain at the repository root, preserving installed symlinks.
+
+`npm test` runs the fast suite. On Windows with Obsidian 1.15.0 installed,
+`npm run test:ui` runs real-host Playwright regressions in fresh fictional vaults;
+`npm run screenshots` generates the light/dark listing assets. Both commands build
+first. See [UI testing](docs/UI-TESTING.md) for executable selection, isolation,
+reviewed visual baselines and the remaining native OS checks. Existing Linux CI
+checks these TypeScript files but does not launch the Windows host.
 
 ## Releases
 

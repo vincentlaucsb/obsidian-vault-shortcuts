@@ -6,9 +6,13 @@
     "build": "tsc --noEmit && node esbuild.config.mjs",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "test:ui": "npm run build && playwright test --config tests/e2e/playwright.config.ts --grep-invert @listing",
+    "test:ui:update": "npm run build && playwright test --config tests/e2e/playwright.config.ts --grep-invert @listing --update-snapshots",
+    "screenshots": "npm run build && playwright test --config tests/e2e/playwright.config.ts --grep @listing"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@types/node": "^22.0.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.39.5",
