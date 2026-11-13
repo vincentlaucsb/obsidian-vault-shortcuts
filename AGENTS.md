@@ -1,6 +1,6 @@
 # Vault Shortcuts contributor rules
 
-Applies to all work in this repository. Read [PLAN.md](PLAN.md) for the agreed
+Applies to all work in this repository. Read [docs/PLAN.md](docs/PLAN.md) for the agreed
 product scope and architecture. Keep this file and that plan consistent with the
 user's latest decisions. Do not expand the product to solve hypothetical issues.
 
@@ -116,8 +116,10 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 - Follow csvzall's source layout: all plugin implementation belongs under `src/`,
   with `src/main.ts` as the entry point and shortcut creators/helpers in
-  `src/shortcuts/`. Keep tests and fixtures in `tests/`; keep documentation,
-  manifest and tooling configuration at the repository root. Do not add runtime
+  `src/shortcuts/`. Keep tests and fixtures in `tests/`; keep design documents,
+  plans, research and preview images under `docs/` (images in `docs/images/`).
+  Keep README, AGENTS.md, LICENSE, manifest and tooling configuration at the
+  repository root. Update relative links when moving documents. Do not add runtime
   TypeScript files at the root. The build must still emit root `main.js` so release
   assets and the Truck vault's existing file symlinks continue to work.
 - Implement `IShortcutCreator`, public `ShortcutCreator` factory/facade, and one
@@ -128,11 +130,92 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   loadData/saveData. Default all to enabled, validate stored booleans, and apply
   changes to file menus only. Do not register editor-menu shortcut actions. These toggles must not disable commands
   or settings-page creation actions.
-- File-menu actions support every TFile, including JPG/CSV attachments, while
-  excluding folders. Preserve full file extensions in URI targets. Keep the
+- File shortcut actions support every TFile, including JPG/CSV attachments.
+  Preserve full file extensions in URI targets. Keep the
   existing createNoteShortcut interface for compatibility; it accepts file paths.
+- Folder file menus have one Create folder shortcut… action when Desktop or the
+  available Windows Start Menu toggle is enabled. Reuse the options dialog,
+  defaulting to Create a note with Clipboard when launched, plus Search this
+  folder. Fix the clicked vault/folder in host/model/writer validation; offer an
+  optional note basename and create directly inside that folder via core new/file.
+  Blank/whitespace names use Untitled.md; let Obsidian allocate numbered names on
+  each launch, without overwrite/append/prepend or creation-time timestamps.
+  Verify repeated launches in an isolated test vault, preserving earlier notes.
+  Keep user-supplied names validated and all content/icon/destination options.
+  Search includes descendants using an anchored, escaped, explicitly
+  case-sensitive path regex, not a folder-open URI. Root folders are supported.
+  Reject stale/moved/replaced folders
+  before creation. No folder scans, direct note edits or new menu preference.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.
+- Windows custom icons (issue #1, version 0.1.0): preserve immediate creation with the
+  vault default and add **Create shortcut with options…** for explicit overrides.
+  Broader core URI support is approved for 1.0.0 in docs/URI-DESIGN.md;
+  the custom-icon implementation remains the 0.1.0 baseline. Reuse the image picker/preview in
+  settings and creation, tag and other-vault dialogs. Accept PNG, JPEG and ICO;
+  distinguish vault default, custom image and the standard Obsidian icon.
+  Other-vault shortcuts default to the Obsidian icon with an optional override,
+  without automatically inheriting the current vault's custom icon.
+  Provide **Paste image** beside **Choose image…** using the owning window's
+  Clipboard API only on that explicit click. Capture image bytes immediately;
+  never poll the clipboard or retain a live clipboard source for an icon. Reuse
+  image validation/conversion/preview/storage, preserve selection on empty,
+  unsupported, denied or failed reads, and guard concurrent/closed-dialog results.
+  Do not interpret clipboard text, HTML, URLs or file paths as image imports.
+  Create picker inputs and conversion elements in the control's owning document;
+  detached Settings windows must not use main-window global DOM helpers.
+- 1.0.0 URI builder: use a read-only live URI preview with Copy and structured
+  controls. Keep the preview fixed above General and Advanced tabs. General holds
+  shortcut name, destination and icon options; Advanced holds action/target and
+  URI behavior controls. Preserve edits when switching tabs and keep validation,
+  launch effects and creation controls visible. In a note-origin dialog, fix both vault and clicked file, including
+  for append/prepend/replace actions. Enforce context in the request model rather
+  than relying only on disabled UI. Allow choosing the same vault's name (default)
+  or manually pasted vault ID; explain portability, rename and duplicate-name
+  tradeoffs plus device-local ID scope. Verify a pasted ID against the current
+  vault folder using the documented CLI before enabling ID-based creation. Allow
+  only the original name or host-verified ID in the bound request model. Generate writing URIs without directly editing
+  notes or reading clipboard content during shortcut creation. The detailed draft
+  is docs/URI-DESIGN.md. Preserve quick actions and provide the options dialog on
+  every supported desktop OS, with destination/icon controls reflecting the OS.
+- Options-dialog vault identity is fixed before opening: current vault from
+  settings, or the explicit other-vault selection passed by that dialog's More
+  options action. Show the vault read-only; keep discovery and manual vault entry
+  in the separate other-vault dialog. Do not expose absolute-path targets in
+  options or allow request/model overrides to escape the fixed vault. Apply the
+  same selected-vault context to every action, including new-note creation.
+- Fresh writing drafts default to Clipboard when launched, including new notes,
+  append/prepend/replace, unique notes and daily capture. Daily Open remains a
+  content-free action. Preserve explicit text/empty choices from presets and
+  action drafts. URI writing content is never read from the clipboard at setup.
+- In shortcut options, the outer icon radio group owns mode selection. Suppress
+  the shared custom-image control's reset buttons there, leaving Choose image
+  and Paste image. Standalone settings/tag/other-vault controls retain resets.
+- Keep Windows `.url` shortcuts with optional icon-file/index fields. Convert images
+  locally to multi-resolution ICO, preserving transparency and aspect ratio. Keep
+  immutable, content-based icon copies outside the vault and plugin directory;
+  disclose their device-local storage and retention after uninstall. Handle missing
+  assets with an explanation and reselection or standard-icon creation. Do not
+  automatically delete retained icons or alter existing shortcuts when defaults
+  change. Keep image processing separate from typed creator contracts and shared
+  writing helpers; validate imports/paths and preserve selection on cancellation.
+  Verify actual Windows Desktop/Start menu icon display and launching as well as
+  focused automated checks when implementing this feature.
+  Write custom-icon `.url` files as UTF-16LE with a BOM so Windows preserves
+  Unicode icon paths; retain existing encoding for standard-icon shortcuts.
+- Custom icons are also approved for macOS and Linux in 1.0.0. Share the picker,
+  preview and default/custom/standard choices across all desktop platforms.
+  Keep Windows ICO behavior; normalize macOS/Linux images to transparent,
+  aspect-preserving 512-pixel PNGs in native user data directories outside the
+  vault/plugin. Linux `.desktop` links use an escaped absolute `Icon` path.
+  macOS keeps `.url` contents and applies Finder metadata only to the newly
+  created file via AppKit. Keep the minimal JXA bridge authored/type-checked in
+  TypeScript, with paths as separate arguments to fixed `/usr/bin/osascript`, a
+  bounded timeout and no shell, Finder UI automation or runtime installation.
+  Preflight missing/invalid assets; if native metadata application fails after
+  creation, keep the shortcut and identify its path in the error. Never silently
+  claim the custom icon succeeded. Document retained assets, metadata-copy
+  limitations and unverified native platform behavior accurately.
 - Add a single **Create tag shortcut** file-menu item for tagged Markdown notes.
   Use the clicked note's cached inline/property tags, deduplicate case-insensitively
   and sort. Open a native modal with a bounded-height, scrollable tag list and an explicit
@@ -142,7 +225,9 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   modal and listbox APIs rather than an undocumented submenu. Tag links use the core
   `obsidian://search` action with an encoded `tag:#name` query. Preserve nested
   tags in the URI and reuse the shared serializers and exclusive writer.
-- Other-vault shortcuts are vault-only. Discover known vault names with the
+- The other-vault selection dialog's quick Create shortcut action is vault-only.
+  More options supports the core action builder bound to that selected vault,
+  including new-note creation. Discover known vault names with the
   official CLI (`vaults verbose`) automatically when the user opens the other-vault
   dialog. Show a selectable list and enable Create shortcut after selection or
   manual entry; do not require a separate discovery button. Parse tab-separated
@@ -162,11 +247,15 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 - Register event handlers with `registerEvent`; register DOM events/timers through
   lifecycle helpers if introduced. Enabling/disabling must not duplicate menu items
   or leave listeners behind. Avoid retaining views or detaching user workspace leaves.
-- Use core `obsidian://open`, percent-encoding parameter values separately. Keep
+- Use documented core `obsidian://` actions, percent-encoding parameter values separately. Keep
   full relative note paths. Filename sanitization must not change the URI target.
 - Default to vault names for URI targets. Do not automatically retrieve IDs through
   undocumented `app.appId` or internal registry access; the lack of first-class
   public API support is the deciding constraint. Retain manual vault-ID entry.
+  Obsidian calls its 16-character identifier a vault ID, rather than a standard
+  UUID. For bound-file ID verification, use the existing hidden, bounded CLI runner
+  with `vault=<id> vault info=path` and compare canonical filesystem paths. Never
+  accept a different vault or silently fall back to name while ID mode is selected.
 - Preserve existing files: exclusive creation, retry collisions with suffixes,
   bounded retries, and report errors. Do not execute created shortcuts automatically.
 - Resolve the actual platform Desktop; do not silently write to a guessed directory.
@@ -187,6 +276,43 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   Existing shortcuts are not migrated or deleted automatically.
 - End users test platforms and file issues. A maintainer Mac/Linux environment is
   not a prerequisite for experimental releases. State actual verification honestly.
+
+### DOM ownership and native controls
+
+- Create interactive DOM elements through their owning container. Keep file
+  inputs connected to that document and open them synchronously from the user
+  action. Avoid global DOM factories for controls used in detached windows.
+- Keep temporary image/canvas elements in the same owning document and remove
+  them after success or failure.
+
+### UI verification
+
+- Use `npm run test:ui` for Windows real-host UI regressions and `npm run
+  screenshots` for listing assets. Tests live in tests/e2e/, baselines in its
+  __screenshots__ tree, listing assets under docs/images/listing/. Follow
+  docs/UI-TESTING.md. Pin the host/version/theme and keep synthetic fixtures
+  separate from personal profiles; never attach to Recipes for automation.
+- The isolated harness may bootstrap only its own synthetic vault/profile
+  metadata. Verify its vault/profile/version before actions. Block native process
+  boundaries before plugin imports (including captured promisify functions), and
+  stub clipboard access in each owning window. Test the guard with a real Create
+  attempt; it must fail before native destination resolution or file creation.
+  Close only the owned process, bound teardown and restrict cleanup to canonical
+  workspace fixture paths. Keep failure diagnostics and review changed baselines.
+- Listing captures reuse actual controls and fictional content. Inspect all
+  generated images; keep curated listing assets separate from regression goldens.
+  Generating them does not authorize publishing a listing or release.
+- Regression tests must exercise the production control responsible for the
+  behavior being tested. Mock external boundaries such as storage or OS queries,
+  rather than replacing the control itself.
+- For controls that launch native UI, verify the actual interaction in the
+  available Obsidian host before declaring it working. For a file picker, verify
+  that clicking opens the dialog and cancellation preserves the selection.
+- When settings or modals support detached windows, include that window context
+  in focused verification of new DOM interactions.
+- Report automated coverage and live verification separately. Type checking,
+  lint, mocked-host tests and native file-format tests do not establish that an
+  Obsidian button works.
 
 ## Build and submission workflow
 
@@ -224,9 +350,9 @@ Local pre-release checklist:
 Current commands: `npm run typecheck`, `npm run lint` (official recommended rules,
 zero warnings required), `npm test` (TypeScript tests), and `npm run build`
 (typecheck + bundle). Official lint is installed and has passed for the implementation.
-A root MIT LICENSE has been added. Implementation targets stable Obsidian 1.13.7
-(verified from the official release feed on September 13, 2026), replacing the
-spike's provisional minimum. Existing tests do not establish live Obsidian launch behavior.
+A root MIT LICENSE has been added. Implementation targets stable Obsidian 1.15.0
+for the full URI builder (verified from the official release feed on November 11,
+2026). Existing tests do not establish live Obsidian launch behavior.
 
 The objective is to prevent avoidable review findings, not promise first-pass
 acceptance. This file does not authorize publishing a release or submitting the plugin.

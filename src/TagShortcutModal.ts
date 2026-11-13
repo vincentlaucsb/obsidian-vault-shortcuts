@@ -1,4 +1,6 @@
-import { App, Modal, Platform, Setting } from 'obsidian';
+import { addIconControl } from './IconControl';
+import type { IconSelection } from './IconControl';
+import { App, Modal, Notice, Platform, Setting } from 'obsidian';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 
 export class TagShortcutModal extends Modal {
@@ -7,7 +9,9 @@ export class TagShortcutModal extends Modal {
   constructor(
     app: App,
     private readonly tags: readonly string[],
-    private readonly create: (tag: string, target: ShortcutDestination) => Promise<boolean>,
+    private readonly create: (tag: string, target: ShortcutDestination, icon?: IconSelection) => Promise<boolean>,
+    private readonly defaultIcon?: string,
+    private readonly configure?: (tag: string, target: ShortcutDestination, icon: IconSelection) => void,
   ) {
     super(app);
   }
@@ -18,7 +22,9 @@ export class TagShortcutModal extends Modal {
     let selected: string | undefined;
     let target: ShortcutDestination = 'desktop';
     let busy = false;
+    let icon: IconSelection = { mode: 'default' };
     let updateButton = (): void => {};
+    let updateOptions = (): void => {};
     this.contentEl.createEl('p', {
       text: 'Choose a tag from this note. The shortcut opens its search results in this vault.',
     });
@@ -41,19 +47,29 @@ export class TagShortcutModal extends Modal {
         .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue('desktop')
         .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
     }
+    const importing = addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, this.defaultIcon);
     new Setting(this.contentEl).addButton(button => {
-      updateButton = () => { button.setDisabled(busy || !selected); };
+      updateButton = () => { button.setDisabled(busy || !selected); updateOptions(); };
       button.setButtonText('Create shortcut').setCta().setDisabled(true).onClick(async () => {
         if (busy || !selected || this.generation !== generation) return;
+        if (importing()) { new Notice('Wait for the icon import to finish.'); return; }
         busy = true;
         updateButton();
         try {
-          const created = await this.create(selected, target);
+          const created = await this.create(selected, target, icon);
           if (created && this.generation === generation) this.close();
         } finally {
           busy = false;
           if (this.generation === generation) updateButton();
         }
+      });
+    });
+    if (this.configure) new Setting(this.contentEl).addButton(button => {
+      updateOptions = () => { button.setDisabled(busy || !selected); };
+      button.setButtonText('More options…').setDisabled(true).onClick(() => {
+        if (busy || !selected || importing() || this.generation !== generation) return;
+        this.configure?.(selected, target, icon);
+        this.close();
       });
     });
   }

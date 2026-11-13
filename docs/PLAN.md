@@ -1,17 +1,269 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated October 3, 2026. This is the consolidated plan for the feasibility
+Updated November 12, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
 none remain. Publishing/submitting the plugin is still outside this task.
 
-Implementation must follow [AGENTS.md](AGENTS.md): TypeScript with strict typing,
+Implementation must follow [AGENTS.md](../AGENTS.md): TypeScript with strict typing,
 no `any` unless unavoidable and justified, the linked official Obsidian policies,
 and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**Playwright UI tests and listing assets (November 12, 2026):** add Windows
+real-Obsidian tests using a pinned 1.15.0 host, synthetic Recipe Box vaults and
+fresh per-test app/home/local profiles. Use the real copied production bundle and
+local CDP because direct Electron Node-inspector launch is unavailable in the
+installed package. Disable updates in the fixture only. Guard native subprocesses
+before imports, verify vault/profile/version, stub clipboard boundaries in each
+document, and keep actual controls/conversion/storage. The Create canary confirms
+Desktop resolution cannot escape the fixture. Bounded teardown closes only the
+owned process and deletes successful canonical fixture paths; failures retain
+traces/screenshots/profile logs. No personal profile or Recipes notes are used.
+
+`test:ui` covers seven workflows and three reviewed Windows visual baselines;
+`screenshots` reuses the same helpers for four light/dark listing scenes under
+docs/images/listing. Keep these assets separate from test goldens. Listing captures
+are inspected locally and README uses a relative image. Existing Linux CI runs
+fast checks/build/typechecks but does not launch the Windows UI suite. Native
+picker visibility, OS icon display/launching and Mac/Linux host behavior retain
+their existing verification limits. See [UI-TESTING.md](UI-TESTING.md).
+Final Windows validation: all 50 fast tests, seven real-host UI tests with three
+unchanged screenshot baselines, both listing-capture runs, strict typecheck,
+zero-warning official lint and production build pass. All eight generated listing
+images and three baselines were visually inspected. Independent review findings
+about early subprocess capture, bounded teardown and clipboard replacement were
+fixed and covered before pushing.
+
+**Folder shortcuts (November 12, 2026):** add one Create folder shortcut… action
+to folder context menus, controlled by the existing Desktop/Windows Start Menu
+visibility toggles. Reuse General/Advanced and the fixed preview. Default to
+Create a note with Clipboard when launched; offer an optional note basename and generate
+the core new URI's vault-relative file path directly inside the clicked folder.
+Offer Search this folder as the other action, including descendants with an
+anchored escaped, explicitly case-sensitive path regex. This is core Search, not a file-explorer folder-open
+action. Vault/folder stay read-only and are enforced through form, host, model
+and writer; reject alternate targets/actions and stale/renamed/replaced folders.
+Root folders work. Keep presets/drafts, icons and destination controls shared.
+No folder scans or direct note/content/clipboard reads are needed. This supersedes
+the original exclusion of folders from all shortcut menus.
+
+Folder names are optional (November 12 refinement). Blank/whitespace names target
+Untitled.md in that folder via the existing core new/file URI. Obsidian allocates
+numbered names on collisions, so each launch creates a fresh note without runtime
+plugin callbacks or timestamps fixed at shortcut creation. Explicit names retain
+their current validation and all other options remain available.
+Live Obsidian 1.15.0 checks in the isolated uri-live-vault/Optional-name-check
+folder created Untitled.md, Untitled 1.md and Untitled 2.md across three launches
+of the same file target, including repeating the exact first URI. The first and
+second payloads remained intact in their original files. Recipes dialog checks
+confirmed the optional label/help, blank-name new/file URI with clipboard=true,
+and enabled creation without entering a name; that dialog was canceled. No
+Recipes note was modified. The numbered-allocation check is native host evidence,
+separate from the form/model/production-control automated regressions.
+
+Production-control/model/writer/host coverage includes root, nested/Unicode names,
+target escapes, draft preservation, menu toggles, and moved/replaced folders.
+Live Windows verification in Recipes showed the Chicken context-menu action,
+fixed Recipes/Chicken fields, Clipboard default and a new/file URI with a supplied
+basename. Read-only core CLI Search checked the final case-sensitive query:
+Chicken returned 11 matching paths, chicken returned none, and Cast Iron Care
+returned its one matching path. Quote/operator and regex-punctuation folder
+strings produced no matches or parser errors. These host checks are separate from
+automated coverage; no shortcut or note was created or launched.
+All 50 tests, strict typecheck, zero-warning lint and production build pass.
+Independent subagent review found no remaining actionable issues after explicitly
+fixing case-sensitive folder searches and using getRoot() for root identity.
+
+**Options flow refinements (November 12, 2026):** fix the general options dialog
+to the current vault, or to the explicit selection passed by the other-vault
+dialog's More options action. Show that identity read-only and keep vault
+discovery/manual selection in the separate other-vault dialog. Absolute-path
+targets are unavailable in options, and the shared model rejects vault/path
+overrides even if a request bypasses the UI. New-note creation uses the same
+fixed selected vault. This supersedes the earlier general-builder editable vault
+and absolute-path design.
+
+Fresh writing actions default to Clipboard when launched, including Create,
+Append, Prepend, Replace, Unique and daily capture. Daily Open still serializes
+no content. Explicit text/empty presets and per-action drafts retain their choice.
+In options, use the three outer icon radios to switch modes; the custom-image
+control shows only Choose image and Paste image. Standalone controls retain
+their reset buttons. Focused production-control, form, model and host tests cover
+these changes.
+
+Live verification in detached Recipes Settings confirmed that the custom-image
+area contains only Choose image and Paste image; Advanced shows Recipes read-only
+without vault discovery; and fresh Create a note defaults to Clipboard when
+launched. Selecting Truck in the other-vault dialog and opening More options
+produced `obsidian://open?vault=Truck` and a read-only Truck identity without a
+vault list. Both dialogs were canceled. No shortcut was created/launched and no
+note was modified. This verifies the available Windows host interaction separately
+from model/automated coverage; the later missing-vault Hook validation fix is
+covered by regression tests rather than this UI session.
+
+**Clipboard images (November 12, 2026):** add Paste image beside Choose image in
+the shared icon control. The explicit click reads supported image data from the
+owning window's Clipboard API and captures a fixed asset through the existing
+validation/conversion/preview/storage pipeline. No background reads, text/HTML
+parsing, URL fetching or clipboard-linked icon source. Empty/unsupported/denied
+reads and conversion failures preserve the current selection and explain the
+failure. Share busy guards with file import/reset actions, discard late results
+after close and remove temporary conversion elements on every path. URI content's
+"Clipboard when launched" remains deferred to Obsidian at launch.
+Live Windows verification in detached Recipes Settings copied the pot-pie bitmap
+from Paint, pasted it into a per-shortcut custom override and observed conversion,
+preview and enabled creation. Replacing the clipboard with URI text produced the
+expected explanation while preserving the pasted preview. Dialogs were canceled
+without creating a shortcut or changing the vault default. The other-vault
+dialog's image row also fits; the shared row stacks/wraps its buttons. Automated
+production-control coverage includes permission/unavailable/empty/text-only,
+oversized/malformed payload, concurrent read/file import and closed-dialog cases.
+
+**Cross-platform custom icons (November 11, 2026):** extend the same picker and
+vault/per-shortcut/tag/other-vault defaults to macOS and Linux. Preserve Windows
+ICO generation. Normalize other platforms to aspect-preserving, transparent
+512-pixel PNGs stored by content hash under macOS Application Support or Linux
+XDG data storage. Linux writes an escaped absolute `Icon` path into the existing
+Type=Link `.desktop` file. macOS keeps the existing `.url` format and applies a
+Finder file icon through AppKit using a minimal TypeScript-checked JXA bridge,
+fixed osascript/argument arrays, timeout and EOF. Preflight assets before writing;
+report the created path and retain the shortcut if native icon application fails.
+No existing shortcuts are modified or deleted. Conversion, shared production
+controls, serialization, storage and bridge/process boundaries have automated
+coverage. Native macOS/Linux icon display and launching remain experimental and
+unverified here; a maintainer host is not a prerequisite for this scoped feature.
+All 44 tests, strict typecheck, official zero-warning lint and production build
+pass on Windows. Independent source review is clean. Production-control tests
+cover all three picker branches; native Windows ICO/Unicode parsing tests pass.
+The macOS bridge tests simulate AppKit/process boundaries and do not establish
+Finder metadata behavior on a Mac.
+
+**Bound-file vault identity (November 11, 2026):** the Advanced tab offers vault
+name (default) or manually pasted vault ID for the same clicked note/attachment.
+Explain that names are readable/portable when names match, but renames break links
+and duplicate names are ambiguous. A vault ID identifies a registered folder on
+one computer; synced copies, moves or re-registration may use different IDs.
+Use Obsidian's term "vault ID" (16 characters), rather than implying a standard UUID.
+There is no ID getter in the installed public API. Users copy the ID from the
+vault switcher; explicit Verify ID uses documented CLI `vault=<id> vault info=path`
+and canonical path comparison to bind it to the current filesystem vault. Name
+mode works without the CLI. The clicked file remains immutable in both modes;
+the model/writer accepts only the original name or a host-verified ID.
+Verified live on Obsidian 1.15.0: copy Recipes' ID from the vault manager, paste
+and verify it in the clicked-note dialog, switch name ↔ ID, and retain the ID when
+changing from Open to Append. URI previews retained the clicked file throughout;
+no shortcut was created or launched. Invalid-ID CLI lookup returned "Vault not
+found." All 40 tests, strict typecheck, official lint and build pass; independent
+subagent review found no actionable issues.
+
+**Settings layout (November 11, 2026):** put vault creation, default icon and
+other-vault button rows below their full-width labels and descriptions. Let button
+rows wrap within narrow settings panes; keep icon preview/actions together and
+icon status on its own line. Context-menu toggles retain their native layout.
+Verified live in detached Recipes Settings at 626px and 902px window widths and
+maximized: descriptions stay readable, action buttons wrap/stack below them, and
+icon status stays left-aligned on its own line. No shortcut was created.
+
+**1.0.0 URI builder planning (November 11, 2026):** the user requested broad
+documented core URI coverage, based on their two-page notebook-dialog sketch.
+The URI is a read-only live preview with Copy. A note-origin dialog fixes both
+vault and clicked file while offering navigation and append/prepend/replace.
+See [URI-DESIGN.md](URI-DESIGN.md) for action coverage, context restrictions,
+approved layout, compatibility findings and verification steps. The user approved
+end-to-end implementation, documentation in `docs/`, preview images and a final
+subagent review. Package/manifest target 1.0.0 with Obsidian 1.15.0 minimum.
+Broader URI support supersedes the earlier deferral; no merge or publication is
+authorized. Implementation and verification results are recorded below.
+
+**UI revision (November 11, 2026):** keep the live URI preview and Copy fixed above
+General and Advanced tabs. General contains shortcut name, destination and icon
+options. Move action selection and all URI behavior controls into Advanced;
+preserve drafts on tab switches. Only the active tab scrolls; validation, launch
+effect and creation controls remain visible below both tabs.
+Production-control tests cover default tab visibility, accessible keyboard
+switching, preserved drafts and Copy/creation from General after Advanced edits.
+Live verification in detached Recipes Settings confirmed the General/Advanced
+split, independent Advanced scrolling with fixed preview/footer, inline validation
+and URI updates, and keyboard switching back to General without losing the target
+or action. The dialog was canceled without creating or launching a shortcut.
+
+The 1.0.0 implementation includes the full native options dialog, typed action
+requests, model-enforced clicked-file identities, one shared URI builder and a
+general creator method for all three OS implementations. Tag and other-vault
+dialogs expose More options presets. Quick actions and independent menu toggles
+remain available. Plans, research and preview images now live under `docs/`.
+
+Windows live verification used an isolated `.test-build/uri-live-vault`, not
+Recipes notes, for Unicode creation, heading append, prepend, replacement, daily
+capture and unique-note creation; expected on-disk effects were observed. New-tab
+opening and search results were inspected in Obsidian 1.15.0. In detached Recipes
+Settings, the real production dialog, action fields, validation, URI updates and
+PNG image picking/conversion/preview were verified. No Recipes writing shortcut
+was launched. Bound-note/attachment controls and callback serialization have
+automated coverage; callback destination delivery and Mac/Linux host behavior
+remain unverified. Independent subagent review found no remaining actionable
+issues after UI-state and custom-preview fixes. Strict typecheck, official lint,
+44 tests and production build are the final local checks.
+
+**Windows custom icons and creation options (November 10, 2026, version 0.1.0):**
+The user agreed to [issue #1](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues/1)
+with the following refinements. Preserve immediate creation through existing
+actions, using the current vault's default icon. Add an explicit **Create shortcut
+with options…** action for per-shortcut customization. This dialog will also be
+the place for additional Obsidian URI options later; broader URI support is future
+work, not part of the icon feature. Keep the current clicked-file targeting and
+Desktop default, with Start menu available on Windows.
+
+Provide a reusable **Choose image…** control accepting PNG, JPEG and ICO, with a
+preview, in settings and the creation, tag and other-vault dialogs. For current-vault
+shortcuts, distinguish **Use vault default**, **Choose image…**, and **Use Obsidian
+icon**; resetting an override restores the vault default. Other-vault shortcuts
+start with the Obsidian icon and allow an explicit override, without automatically
+inheriting the current vault's custom icon. Default changes affect new shortcuts
+only. Editing or migrating existing shortcuts remains out of scope.
+
+Retain Windows `.url` files, adding optional `IconFile` and `IconIndex=0` fields.
+Convert images locally to real multi-resolution ICO files, preserving transparency
+and fitting rectangular images without distortion. Store immutable, content-based
+copies in a per-user local directory outside the vault and plugin installation so
+shortcuts survive deletion of the source image and plugin removal. Treat assets as
+device-local: if settings arrive on a computer without the referenced icon, explain
+the missing asset and allow reselection or creation with the standard icon. Document
+the storage location and retention; do not automatically clean up assets that may
+still be referenced by shortcuts.
+
+Keep image selection/conversion separate from shortcut writing and pass optional,
+typed icon information through the existing creator interface/facade. Validate
+imports and serialized paths, preserve selection on cancellation, and report useful
+errors. Preserve exclusive writes and existing no-custom-icon behavior. First verify
+a generated multi-resolution ICO on Windows Desktop and Start menu, including a
+Unicode path, then build the reusable UI. Add focused automated coverage for the
+serializer, conversion and durable storage, and verify actual Windows icon display
+and shortcut launching. The implementation and regression coverage are present.
+Custom-icon `.url` files use UTF-16LE with a BOM because native Windows shortcut
+parsing misreads UTF-8 icon paths outside the active ANSI code page. Existing
+standard-icon files retain their encoding. Live image-picker, Windows display and
+double-click testing remain part of end-user verification; native parsing checks
+do not establish that complete UI flow.
+
+Detached Settings picker repair: create the file input inside the control's own
+document and keep conversion elements in that same window. Global DOM helpers
+can use the main vault window and fail to open a picker from detached Settings.
+The repaired native dialog opening and cancellation were verified in Recipes on
+Windows; full image selection and shortcut launching remain manual test items.
+
+**UI verification rules (November 11, 2026):** AGENTS.md now requires DOM ownership
+through the receiving container, connected file inputs opened synchronously from
+the user action, and cleanup of temporary conversion elements. Regression tests
+exercise the production control and mock external boundaries. Verify native UI
+interactions in the available Obsidian host, including detached windows when
+supported, and report live checks separately from automated coverage. Keep these
+checks focused on the changed behavior; the experimental-platform testing policy
+does not require a broad maintainer OS matrix.
 
 **Tag shortcuts (October 3, 2026, version 0.0.3):** add one **Create tag shortcut**
 file-menu item for tagged Markdown notes. Read the clicked note's metadata cache,
@@ -45,8 +297,9 @@ including when duplicate names need disambiguation.
 
 **Other-vault convenience:** add a settings action opening a small dialog with
 manual vault-name/ID entry always available, automatic CLI discovery on dialog open, and a
-destination choice (Desktop, plus Start Menu on Windows). Only vault shortcuts
-are supported for other vaults. Run documented `vaults verbose` and validate
+destination choice (Desktop, plus Start Menu on Windows). Its quick Create shortcut
+action creates a vault shortcut. More options opens all core actions bound to
+the selection, including new-note creation. Run documented `vaults verbose` and validate
 tab-separated name/path rows, ignoring observed startup diagnostics. Use names
 for the URI. Support the running Windows app's redirector or older executable
 as well as absolute PATH entries. Close stdin to avoid waiting for Enter.

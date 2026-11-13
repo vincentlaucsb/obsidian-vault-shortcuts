@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { setImmediate } from 'node:timers/promises';
+import { iconControls } from './icon-control-fixture';
 export { discoveryErrorMessage } from '../src/vaultDiscovery';
 
 let discoveryCalls = 0;
@@ -98,6 +99,14 @@ export async function runModalScenarios(createModal: (create: (name: string, tar
   list.value = 'Other & café';
   list.onchange();
   assert.equal(create.disabled, false);
+  const icon = iconControls.at(-1);
+  assert.ok(icon);
+  assert.deepEqual(icon.initial, { mode: 'standard' }, 'Other-vault dialogs start with the Obsidian icon');
+  assert.equal(icon.allowDefault, false, 'Other-vault dialogs do not offer this vault default');
+  icon.busy = true;
+  await create.click();
+  assert.equal(created.length, 0, 'Other-vault creation waits for the image import');
+  icon.busy = false;
   await create.click();
   assert.deepEqual(created, [['Other & café', 'desktop']]);
   modal.onClose();

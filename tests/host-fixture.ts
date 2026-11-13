@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
+import type { IconSelection } from '../src/IconControl';
+import type { ShortcutDestination } from '../src/shortcuts/WindowsShortcutCreator';
+import type { ShortcutOptions } from '../src/shortcuts/IShortcutCreator';
+import { iconControls } from './icon-control-fixture';
+import { optionDialogs } from './options-modal-host-fixture';
+import type { ShortcutContext, ShortcutRequest } from '../src/shortcuts/requests';
 
 export const Platform = { isDesktopApp: true, isWin: true, isMacOS: false, isLinux: false };
 const notices: string[] = [];
-const creations: { os: string; vault: string; path?: string }[] = [];
+const creations: { os: string; vault: string; path?: string; iconPath?: string }[] = [];
 interface TestMetadata { tags?: { tag: string }[]; frontmatter?: { tags: string[] } }
 export function getAllTags(cache: TestMetadata): string[] {
   return [...(cache.tags ?? []).map(entry => entry.tag), ...(cache.frontmatter?.tags ?? []).map(tag => `#${tag}`)];
@@ -13,7 +19,17 @@ export class Notice {
 export class TFile {
   constructor(public path: string, public extension = 'md') {}
 }
+export class TFolder {
+  constructor(public path: string) {}
+  isRoot(): boolean { return this.path === '/'; }
+}
 export class MarkdownView { file: TFile | null = null; }
+export class FileSystemAdapter { getBasePath(): string { return '/vault/Test vault'; } }
+export function verifyVaultId(id: string, path: string): Promise<string> {
+  assert.equal(path, '/vault/Test vault');
+  if (id !== '1234567890abcdef') return Promise.reject(new Error('This ID belongs to a different vault.'));
+  return Promise.resolve(id);
+}
 class MenuItem {
   title = '';
   callback: (() => void | Promise<void>) | undefined;
@@ -27,7 +43,7 @@ export class Menu {
     const item = new MenuItem(); build(item); this.items.push(item);
   }
 }
-type FileHandler = (menu: Menu, file: TFile) => void;
+type FileHandler = (menu: Menu, file: TFile | TFolder) => void;
 type EditorHandler = (menu: Menu, editor: unknown, info: { file: TFile }) => void;
 class Workspace {
   active = new MarkdownView();
@@ -45,9 +61,12 @@ export class Plugin {
   readonly app = {
     workspace: new Workspace(),
     vault: {
-      files: new Map<string, TFile>(),
+      adapter: new FileSystemAdapter(),
+      files: new Map<string, TFile | TFolder>(),
+      root: new TFolder('/'),
+      getRoot(): TFolder { return this.root; },
       getName: () => 'Test vault',
-      getAbstractFileByPath(path: string): TFile | undefined { return this.files.get(path); },
+      getAbstractFileByPath(path: string): TFile | TFolder | undefined { return this.files.get(path); },
     },
     metadataCache: {
       entries: new Map<TFile, TestMetadata>(),
@@ -70,14 +89,21 @@ import { Modal, Setting } from './modal-fixture';
 export { Modal, Setting } from './modal-fixture';
 class Creator {
   constructor(private readonly os: string) {}
-  createVaultShortcut(vault: string): Promise<string> {
-    creations.push({ os: this.os, vault }); return Promise.resolve('Desktop/shortcut');
+  createShortcut(request: ShortcutRequest, _label: string, options?: ShortcutOptions, _context?: ShortcutContext): Promise<string> {
+    if (request.action === 'new' && request.target.kind === 'vault' && request.target.file) return this.createNoteShortcut(request.target.vault, request.target.file, options);
+    if (request.action === 'search') return this.createNoteShortcut(request.vault, request.query ?? '', options);
+    if (request.action !== 'open' || request.target.kind !== 'vault') throw new Error('Unexpected host fixture request');
+    return request.target.file ? this.createNoteShortcut(request.target.vault, request.target.file, options) :
+      this.createVaultShortcut(request.target.vault, options);
   }
-  createNoteShortcut(vault: string, path: string): Promise<string> {
-    creations.push({ os: this.os, vault, path }); return Promise.resolve('Desktop/shortcut');
+  createVaultShortcut(vault: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
-  createTagShortcut(vault: string, tag: string): Promise<string> {
-    creations.push({ os: this.os, vault, path: tag }); return Promise.resolve('Desktop/shortcut');
+  createNoteShortcut(vault: string, path: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, path, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
+  }
+  createTagShortcut(vault: string, tag: string, options?: ShortcutOptions): Promise<string> {
+    creations.push({ os: this.os, vault, path: tag, ...(options?.iconPath ? { iconPath: options.iconPath } : {}) }); return Promise.resolve('Desktop/shortcut');
   }
 }
 export class WindowsShortcutCreator extends Creator {
@@ -86,7 +112,15 @@ export class WindowsShortcutCreator extends Creator {
 export class MacOSShortcutCreator extends Creator { constructor() { super('mac'); } }
 export class LinuxShortcutCreator extends Creator { constructor() { super('linux'); } }
 
-export async function runScenarios(createPlugin: () => Plugin & { saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void> }): Promise<void> {
+interface TestPlugin extends Plugin {
+  defaultIcon: string | undefined;
+  saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void>;
+  saveDefaultIcon(selection: IconSelection): Promise<void>;
+  createShortcut(file?: TFile, target?: ShortcutDestination, otherVaultName?: string, icon?: IconSelection): Promise<boolean>;
+  openPresetOptions(request: ShortcutRequest, target: ShortcutDestination, initialIcon: IconSelection, selectedVault?: string): void;
+}
+
+export async function runScenarios(createPlugin: () => TestPlugin): Promise<void> {
   const plugin = createPlugin(); await plugin.onload();
   const a = new TFile('A.md'); const b = new TFile('Folder/B.md');
   plugin.app.vault.files.set(a.path, a); plugin.app.vault.files.set(b.path, b);
@@ -95,7 +129,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   plugin.app.workspace.fileHandler?.(menu, b);
   plugin.app.workspace.fileHandler?.(menu, b);
   assert.equal(plugin.app.workspace.editorHandler, undefined, "Editor menus must not be registered");
-  assert.equal(menu.items.length, 2, 'Duplicate events must add each destination only once');
+  assert.equal(menu.items.length, 3, 'Duplicate events must add each destination and options only once');
   await menu.items[0].callback?.();
   assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: b.path });
   await menu.items[1].callback?.();
@@ -105,15 +139,41 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
     plugin.app.vault.files.set(attachment.path, attachment);
     const attachmentMenu = new Menu();
     plugin.app.workspace.fileHandler?.(attachmentMenu, attachment);
-    assert.equal(attachmentMenu.items.length, 2);
+    assert.equal(attachmentMenu.items.length, 3);
     await attachmentMenu.items[0].callback?.();
     assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: attachment.path });
     await attachmentMenu.items[1].callback?.();
     assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: attachment.path });
   }
   const folderMenu = new Menu();
-  plugin.app.workspace.fileHandler?.(folderMenu, { path: 'Attachments', extension: '' });
-  assert.equal(folderMenu.items.length, 0, 'Folders must not get file shortcut actions');
+  const folder = new TFolder('Meals & café');
+  plugin.app.vault.files.set(folder.path, folder);
+  plugin.app.workspace.fileHandler?.(folderMenu, folder);
+  plugin.app.workspace.fileHandler?.(folderMenu, folder);
+  assert.deepEqual(folderMenu.items.map(item => item.title), ['Create folder shortcut…'], 'Folders get one options action, without file/tag actions or duplicates');
+  await folderMenu.items[0].callback?.();
+  const folderOptions = optionDialogs.at(-1);
+  assert.ok(folderOptions);
+  assert.deepEqual(folderOptions.context, { kind: 'folder', vault: 'Test vault', folder: folder.path });
+  const folderRequest: ShortcutRequest = { action: 'new', target: { kind: 'vault', vault: 'Test vault', file: `${folder.path}/Soup.md` }, mode: 'create', content: { kind: 'clipboard' } };
+  assert.equal(await folderOptions.create(folderRequest, 'Soup', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: `${folder.path}/Soup.md` });
+  assert.equal(await folderOptions.create({ ...folderRequest, target: { kind: 'vault', vault: 'Test vault', file: 'Elsewhere/Soup.md' } }, 'Escape', 'desktop', { mode: 'standard' }), false);
+  folder.path = 'Renamed';
+  assert.equal(await folderOptions.create(folderRequest, 'Stale folder', 'desktop', { mode: 'standard' }), false);
+  folder.path = 'Meals & café';
+  plugin.app.vault.files.set(folder.path, new TFolder(folder.path));
+  assert.equal(await folderOptions.create(folderRequest, 'Replaced folder', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0);
+  const rootMenu = new Menu();
+  plugin.app.workspace.fileHandler?.(rootMenu, plugin.app.vault.root);
+  await rootMenu.items[0].callback?.();
+  const rootOptions = optionDialogs.at(-1);
+  assert.ok(rootOptions);
+  assert.deepEqual(rootOptions.context, { kind: 'folder', vault: 'Test vault', folder: '' });
+  const rootRequest: ShortcutRequest = { ...folderRequest, target: { kind: 'vault', vault: 'Test vault', file: 'Soup.md' } };
+  assert.equal(await rootOptions.create(rootRequest, 'Root note', 'desktop', { mode: 'standard' }), true, 'Root uses the public getRoot API rather than a path registry entry');
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', path: 'Soup.md' });
   plugin.app.vault.files.delete(b.path);
   await menu.items[0].callback?.();
   assert.equal(creations.length, 0);
@@ -135,7 +195,14 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       const editorMenu = new Menu();
       configured.app.workspace.fileHandler?.(fileMenu, a);
       configured.app.workspace.editorHandler?.(editorMenu, undefined, { file: a });
-      assert.equal(fileMenu.items.length, Number(desktop) + Number(startMenu));
+      assert.equal(fileMenu.items.length, Number(desktop) + Number(startMenu) + Number(desktop || startMenu));
+      const configuredFolderMenu = new Menu();
+      configured.app.workspace.fileHandler?.(configuredFolderMenu, folder);
+      assert.equal(configuredFolderMenu.items.length, Number(desktop || startMenu), 'Folder options follow destination visibility toggles');
+      if (desktop || startMenu) {
+        await configuredFolderMenu.items[0].callback?.();
+        assert.equal(optionDialogs.at(-1)?.target, desktop ? 'desktop' : 'start-menu');
+      }
       assert.equal(editorMenu.items.length, 0, 'Editor menus must stay unchanged for every toggle combination');
       const reloaded = createPlugin(); reloaded.data = configured.data;
       await reloaded.onload();
@@ -143,7 +210,78 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       assert.equal(restoredMenu.items.length, fileMenu.items.length, 'Preferences survive reload');
     }
   }
+  const icons = createPlugin(); await icons.onload();
+  const defaultPath = 'C:\\Icons\\default.ico';
+  const overridePath = 'C:\\Icons\\override.ico';
+  await Promise.all([
+    icons.saveDefaultIcon({ mode: 'custom', path: defaultPath }),
+    icons.saveContextMenuOption('desktop', false),
+    icons.saveContextMenuOption('tags', false),
+  ]);
+  assert.deepEqual(icons.data, { desktop: false, startMenu: true, tags: false, defaultIcon: defaultPath },
+    'Concurrent icon and toggle saves preserve every preference');
+  const iconsReloaded = createPlugin(); iconsReloaded.data = icons.data; await iconsReloaded.onload();
+  assert.equal(iconsReloaded.defaultIcon, defaultPath, 'Default icon survives reload');
+  await icons.createShortcut();
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault', iconPath: defaultPath });
+  await icons.createShortcut(undefined, 'start-menu', undefined, { mode: 'custom', path: overridePath });
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', iconPath: overridePath });
+  await icons.createShortcut(undefined, 'desktop', undefined, { mode: 'standard' });
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Test vault' }, 'Standard icon overrides a custom default');
+  await icons.createShortcut(undefined, 'desktop', 'Other vault');
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other vault' }, 'Other vaults do not inherit this vault icon');
+  await icons.createShortcut(undefined, 'desktop', 'Other vault', { mode: 'custom', path: overridePath });
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other vault', iconPath: overridePath });
+  assert.equal(await icons.createShortcut(undefined, 'desktop', undefined, { mode: 'custom', path: 'C:\\missing.ico' }), false);
+  assert.equal(creations.length, 0, 'Unavailable icons must not silently produce a different shortcut');
+  assert.match(notices.pop() ?? '', /unavailable on this computer/);
+  icons.app.vault.files.set(b.path, b);
+  icons.app.workspace.active.file = a;
+  const optionsMenu = new Menu(); icons.app.workspace.fileHandler?.(optionsMenu, b);
+  await optionsMenu.items.find(item => item.title.startsWith('Create shortcut with options'))?.callback?.();
+  const optionsDialog = optionDialogs.at(-1);
+  assert.ok(optionsDialog);
+  assert.deepEqual(optionsDialog.context, { kind: 'file', vault: 'Test vault', file: b.path, markdown: true });
+  assert.equal(optionsDialog.defaultIcon, defaultPath);
+  assert.equal(optionsDialog.target, 'start-menu');
+  const request: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: 'Test vault', file: b.path } };
+  await optionsDialog.create(request, 'Note shortcut', 'start-menu', { mode: 'default' });
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: b.path, iconPath: defaultPath },
+    'Options retain the clicked file and initial destination');
+  assert.equal(await optionsDialog.create({ action: 'search', vault: 'Other' }, 'Bad', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0, 'An injected request cannot escape the clicked note context');
+  const idRequest: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: '1234567890abcdef', file: b.path } };
+  assert.equal(await optionsDialog.create(idRequest, 'Unverified', 'desktop', { mode: 'standard' }), false);
+  assert.ok(optionsDialog.verifyVaultId);
+  await assert.rejects(optionsDialog.verifyVaultId('fedcba0987654321'), /different vault/);
+  await optionsDialog.verifyVaultId('1234567890abcdef');
+  assert.equal(await optionsDialog.create(idRequest, 'Verified', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: '1234567890abcdef', path: b.path });
+  icons.app.vault.files.delete(b.path);
+  assert.equal(await optionsDialog.create(request, 'Stale', 'desktop', { mode: 'standard' }), false);
+  assert.equal(creations.length, 0, 'A configured shortcut rechecks file existence before creation');
+  const preset: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: 'Other & café' } };
+  icons.openPresetOptions(preset, 'desktop', { mode: 'default' }, 'Other & café');
+  const otherOptions = optionDialogs.at(-1);
+  assert.ok(otherOptions);
+  assert.deepEqual(otherOptions.context, { kind: 'general', currentVault: 'Test vault', targetVault: 'Other & café' });
+  assert.equal(otherOptions.defaultIcon, undefined, 'Other-vault More options cannot inherit the current vault icon');
+  assert.equal(await otherOptions.create(preset, 'Other vault', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other & café' });
+  assert.equal(await otherOptions.create({ action: 'open', target: { kind: 'vault', vault: 'Test vault' } }, 'Wrong vault', 'desktop', { mode: 'standard' }), false);
+  assert.equal(await otherOptions.create({ action: 'open', target: { kind: 'path', path: 'C:\\Other vault\\Dinner.md' } }, 'Absolute', 'desktop', { mode: 'standard' }), false);
+  for (const request of [{ action: 'hook-get-address' as const }, { action: 'hook-get-address' as const, vault: undefined }]) {
+    assert.equal(await otherOptions.create(request, 'Missing Hook vault', 'desktop', { mode: 'standard' }), false);
+  }
+  assert.equal(creations.length, 0, 'Host callbacks enforce selected-vault context independently of the modal');
+  await Promise.all([
+    icons.saveContextMenuOption('tags', true),
+    icons.saveDefaultIcon({ mode: 'standard' }),
+  ]);
+  assert.deepEqual(icons.data, { desktop: false, startMenu: true, tags: true }, 'Reset preserves concurrently changed toggles');
+  Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
   const tagged = createPlugin(); await tagged.onload();
+  await tagged.saveDefaultIcon({ mode: 'custom', path: defaultPath });
   tagged.app.vault.files.set(b.path, b);
   tagged.app.workspace.active.file = a;
   tagged.app.metadataCache.entries.set(a, { tags: [{ tag: '#active-only' }] });
@@ -160,6 +298,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   await tagMenu.items[0].callback?.();
   assert.equal(Modal.opened.length, 1, 'There is one modal for the tag action');
   const modal = Modal.opened[0];
+  assert.deepEqual(iconControls.at(-1)?.initial, { mode: 'default' }, 'Tags start with the vault default');
   assert.equal(Setting.dropdowns.length, 1, 'Windows destination is inside the modal');
   assert.equal(Setting.dropdowns[0].value, 'desktop');
   assert.equal(Setting.buttons[0].disabled, true);
@@ -176,9 +315,15 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
   tagList.value = '#projects/client';
   tagList.onchange();
   assert.equal(Setting.buttons[0].disabled, false);
+  const tagIcon = iconControls.at(-1);
+  assert.ok(tagIcon);
+  tagIcon.busy = true;
+  await Setting.buttons[0].click();
+  assert.equal(creations.length, 0, 'Tags cannot create while an image is being imported');
+  tagIcon.busy = false;
   Setting.dropdowns[0].change('start-menu');
   await Setting.buttons[0].click();
-  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: '#projects/client' });
+  assert.deepEqual(creations.pop(), { os: 'windows-start-menu', vault: 'Test vault', path: '#projects/client', iconPath: defaultPath });
   assert.equal(modal.contentEl.messages.length, 0, 'Successful creation closes the modal');
   await tagged.saveContextMenuOption('tags', false);
   const hidden = new Menu(); tagged.app.workspace.fileHandler?.(hidden, b);
@@ -197,7 +342,7 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
     Platform.isWin = false; Platform.isMacOS = os === 'mac'; Platform.isLinux = os === 'linux';
     const next = createPlugin(); await next.onload(); next.app.vault.files.set(a.path, a);
     const nextMenu = new Menu(); next.app.workspace.fileHandler?.(nextMenu, a);
-    assert.equal(nextMenu.items.length, 1, 'Start menu action is Windows-only');
+    assert.equal(nextMenu.items.length, 2, 'Options are available on every desktop platform');
     await nextMenu.items[0].callback?.();
     if (os === 'unsupported') {
       assert.equal(creations.length, 0); assert.match(notices.pop() ?? '', /unavailable/);
@@ -205,8 +350,8 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
     if (os !== 'unsupported') {
       next.app.metadataCache.entries.set(a, { tags: [{ tag: '#work' }] });
       const tagsOnOS = new Menu(); next.app.workspace.fileHandler?.(tagsOnOS, a);
-      assert.deepEqual(tagsOnOS.items.map(item => item.title), ['Create desktop shortcut', 'Create tag shortcut']);
-      await tagsOnOS.items[1].callback?.();
+      assert.deepEqual(tagsOnOS.items.map(item => item.title), ['Create desktop shortcut', 'Create shortcut with options\u2026', 'Create tag shortcut']);
+      await tagsOnOS.items[2].callback?.();
       assert.equal(Setting.dropdowns.length, 0, 'Destination control is Windows-only');
       const osTagList = Modal.opened[0].contentEl.messages[1];
       osTagList.value = '#work';
@@ -216,4 +361,5 @@ export async function runScenarios(createPlugin: () => Plugin & { saveContextMen
       Setting.buttons = []; Setting.inputs = []; Setting.dropdowns = []; Modal.opened = [];
     }
   }
+  Platform.isWin = true; Platform.isMacOS = false; Platform.isLinux = false;
 }

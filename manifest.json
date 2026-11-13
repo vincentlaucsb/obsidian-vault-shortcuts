@@ -1,9 +1,9 @@
 {
   "id": "vault-shortcuts",
   "name": "Vault Shortcuts",
-  "version": "0.0.3",
-  "minAppVersion": "1.13.7",
-  "description": "Create desktop and Windows start menu shortcuts to vaults, files and tag searches.",
+  "version": "1.0.0",
+  "minAppVersion": "1.15.0",
+  "description": "Create desktop and Windows start menu shortcuts for Obsidian URI actions, vaults, files and searches.",
   "author": "Vince",
   "isDesktopOnly": true
 }

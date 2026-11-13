@@ -23,6 +23,11 @@ void test('mock host: clicked-note targeting, duplicate menus, stale files and O
       plugins: [{
         name: 'mock-host',
         setup(buildContext) {
+          buildContext.onResolve({ filter: /^\.\/vaultIdentity$/ }, () => ({ path: fixture }));
+          buildContext.onResolve({ filter: /^\.\/ShortcutOptionsModal$/ },
+            () => ({ path: resolve('tests/options-modal-host-fixture.ts') }));
+          buildContext.onResolve({ filter: /^\.\/IconControl$/ },
+            () => ({ path: resolve('tests/icon-control-fixture.ts') }));
           buildContext.onResolve({ filter: /^\.\/vaultDiscovery$/ },
             () => ({ path: resolve('tests/modal-fixture.ts') }));
           buildContext.onResolve({ filter: /^obsidian$|^\.\/WindowsShortcutCreator$|^\.\/MacOSShortcutCreator$|^\.\/LinuxShortcutCreator$/ },
