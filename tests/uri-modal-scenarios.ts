@@ -46,6 +46,8 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   general.open();
   assert.equal(copied.length, 0, 'Opening and previewing must not touch the clipboard');
   assert.equal(uri(general).searchParams.get('vault'), 'Recipes');
+  assert.equal(field('vault').inputs[0].inputEl.readOnly, true, 'The notebook fixes its vault before opening the options dialog');
+  assert.equal(general.contentEl.descendants().some(element => element.attributes.get('aria-label') === 'Known vaults'), false, 'Vault discovery belongs in the separate other-vault dialog');
   const generalTab = button('General').buttonEl;
   const advancedTab = button('Advanced').buttonEl;
   const panels = general.contentEl.descendants().filter(element => element.attributes.get('role') === 'tabpanel');
@@ -67,7 +69,11 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(generalIcon.container.hidden, false);
   assert.deepEqual(generalIcon.initial, { mode: 'standard' }, 'Custom picker starts empty even when vault default exists');
   assert.equal(generalIcon.defaultPath, undefined, 'Vault default thumbnail is not passed to the custom picker');
-  await generalIcon.select({ mode: 'standard' });
+  assert.equal(generalIcon.allowDefault, false);
+  assert.equal(generalIcon.allowStandard, false, 'Icon mode is selected only by the outer radio group');
+  const standardRadio = general.contentEl.descendants().find(element => element.attributes.get('value') === 'standard');
+  assert.ok(standardRadio);
+  standardRadio.onchange();
   assert.equal(generalIcon.container.hidden, true, 'Standard icon choice hides the custom picker');
   let prevented = false;
   generalTab.onkeydown({ key: 'ArrowRight', preventDefault: () => { prevented = true; } });
@@ -78,6 +84,7 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(field('action').settingEl.isVisible, true);
   assert.equal(preview.isVisible, true, 'Preview stays outside the switching panels');
   await select('target-mode', 'file');
+  assert.deepEqual([...field('target-mode').dropdowns[0].options.keys()], ['vault', 'file'], 'Absolute paths cannot bypass the notebook vault');
   await text('file', 'Meals/Soup.md');
   await select('navigation', 'heading');
   await text('anchor', 'Steps & tips');
@@ -103,6 +110,7 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(field('label').inputs[0].value, 'My shortcut');
 
   await select('action', 'append');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard', 'Fresh append defaults to clipboard at launch');
   await text('file', 'Meals/Log.md');
   await select('content-source', 'text');
   await text('text', 'This literal text must disappear');
@@ -123,6 +131,7 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(copied.length, 2, 'Clipboard content is deferred until launch');
 
   await select('action', 'replace');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard', 'Fresh replace defaults to clipboard at launch');
   await text('file', 'Meals/Log.md');
   await select('content-source', 'clipboard');
   const replace = uri(general);
@@ -154,21 +163,32 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   await text('file', 'Meals/Soup.md');
   await select('navigation', 'heading');
   await text('anchor', 'Steps & tips');
+  const fixedBeforeTampering = uri(general).href;
   await select('target-mode', 'path');
-  await text('path', 'C:\\Notes\\Other.md');
-  assert.ok(absent('vault'), 'An absolute file path replaces vault selection');
-  assert.equal(uri(general).searchParams.get('path'), 'C:\\Notes\\Other.md#Steps & tips');
-  assert.equal(uri(general).searchParams.get('vault'), null);
-  assert.equal(uri(general).searchParams.get('file'), null);
+  assert.ok(absent('path'), 'An injected dropdown value cannot introduce absolute paths');
+  assert.equal(uri(general).href, fixedBeforeTampering);
+  await text('vault', 'Other vault');
+  assert.equal(uri(general).searchParams.get('vault'), 'Recipes', 'Even a forged change event cannot replace the fixed vault');
   await select('action', 'new');
   assert.ok(field('vault').inputs[0].disabled || field('vault').inputs[0].inputEl.readOnly, 'New-note creation stays in current vault');
   await text('name', 'New recipe');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard', 'Fresh new-note creation defaults to clipboard at launch');
+  assert.equal(uri(general).searchParams.get('clipboard'), 'true');
   assert.equal(uri(general).searchParams.get('name'), 'New recipe');
   assert.equal(uri(general).searchParams.get('vault'), 'Recipes');
   await select('action', 'daily');
   assert.equal(uri(general).hostname, 'daily');
   assert.ok(absent('file'));
+  assert.equal(uri(general).searchParams.get('clipboard'), null, 'Daily Open does not capture content');
   await select('daily-mode', 'append');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard', 'Daily capture defaults to clipboard at launch');
+  await select('content-source', 'text');
+  await text('text', 'Preserve daily text');
+  await select('daily-mode', 'open');
+  assert.equal(uri(general).searchParams.has('content'), false);
+  await select('daily-mode', 'append');
+  assert.equal(field('content-source').dropdowns[0].value, 'text', 'Daily capture retains an explicit source after Open');
+  assert.equal(uri(general).searchParams.get('content'), 'Preserve daily text');
   await select('content-source', 'clipboard');
   await text('heading', 'Daily log');
   assert.equal(uri(general).searchParams.get('append'), 'true');
@@ -180,6 +200,7 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   await select('daily-mode', 'open');
   for (const key of ['silent', 'clipboard', 'overwrite', 'heading', 'spacing']) assert.equal(uri(general).searchParams.get(key), null, `Normal Daily open omits ${key}`);
   await select('action', 'unique');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard', 'Fresh unique-note creation defaults to clipboard at launch');
   await select('content-source', 'clipboard');
   assert.equal(uri(general).hostname, 'unique');
   assert.equal(uri(general).searchParams.get('clipboard'), 'true');
@@ -190,6 +211,45 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(uri(general).searchParams.get('x-success'), 'sample-app://complete?name=Snow & soup');
   assert.equal(uri(general).searchParams.get('x-error'), 'sample-app://error');
   general.close();
+
+  const selectedVault = 'Other & café';
+  let selectedRequest: ShortcutRequest | undefined;
+  let selectedIcon: IconSelection | undefined;
+  const selected = factory({ context: { kind: 'general', currentVault: 'Recipes', targetVault: selectedVault },
+    initialRequest: { action: 'open', target: { kind: 'vault', vault: selectedVault } },
+    initialIcon: { mode: 'default' }, create: (request, _label, _destination, icon) => {
+      selectedRequest = request; selectedIcon = icon; return Promise.resolve(false);
+    } });
+  selected.open();
+  await button('Advanced').click();
+  assert.equal(field('vault').inputs[0].inputEl.readOnly, true);
+  assert.equal(uri(selected).searchParams.get('vault'), selectedVault);
+  await text('vault', 'Recipes');
+  assert.equal(uri(selected).searchParams.get('vault'), selectedVault, 'The other-vault selection stays fixed');
+  await select('action', 'new');
+  await text('name', 'Selected vault note');
+  assert.equal(field('content-source').dropdowns[0].value, 'clipboard');
+  assert.equal(uri(selected).searchParams.get('vault'), selectedVault, 'New notes use the explicitly selected other vault');
+  await select('content-source', 'text');
+  await text('text', 'Keep this draft');
+  await select('action', 'search');
+  await select('action', 'new');
+  assert.equal(field('content-source').dropdowns[0].value, 'text', 'Changing actions restores an explicit content choice');
+  assert.equal(uri(selected).searchParams.get('content'), 'Keep this draft');
+  await button('Create shortcut').click();
+  assert.ok(selectedRequest && 'target' in selectedRequest && selectedRequest.target.kind === 'name');
+  assert.equal(selectedRequest.target.vault, selectedVault);
+  assert.deepEqual(selectedIcon, { mode: 'standard' }, 'Other-vault shortcuts do not inherit the current vault default');
+  selected.close();
+
+  const explicitEmpty = factory({ context: { kind: 'general', currentVault: 'Recipes' },
+    initialRequest: { action: 'new', target: { kind: 'name', vault: 'Recipes', name: 'Empty note' }, mode: 'create', content: { kind: 'none' } },
+    create: () => Promise.resolve(false) });
+  explicitEmpty.open();
+  await button('Advanced').click();
+  assert.equal(field('content-source').dropdowns[0].value, 'none', 'An explicit empty-note preset remains empty');
+  assert.equal(uri(explicitEmpty).searchParams.has('clipboard'), false);
+  explicitEmpty.close();
 
   const vaultId = '1234567890abcdef';
   let verificationChecks = 0;

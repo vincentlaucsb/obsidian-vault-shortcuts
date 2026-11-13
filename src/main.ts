@@ -143,10 +143,11 @@ export default class VaultShortcuts extends Plugin {
     }).open();
   }
 
-  openPresetOptions(request: ShortcutRequest, target: ShortcutDestination, initialIcon: IconSelection): void {
-    const context: ShortcutContext = { kind: 'general', currentVault: this.app.vault.getName() };
+  openPresetOptions(request: ShortcutRequest, target: ShortcutDestination, initialIcon: IconSelection, selectedVault = this.app.vault.getName()): void {
+    const currentVault = this.app.vault.getName();
+    const context: ShortcutContext = { kind: 'general', currentVault, targetVault: selectedVault };
     new ShortcutOptionsModal(this.app, {
-      context, initialRequest: request, initialIcon, target, defaultIcon: this.defaultIcon,
+      context, initialRequest: request, initialIcon, target, defaultIcon: selectedVault === currentVault ? this.defaultIcon : undefined,
       create: (next, label, destination, icon) => this.createConfiguredShortcut(next, label, destination, icon, context),
     }).open();
   }
@@ -245,7 +246,7 @@ class VaultShortcutsSettings extends PluginSettingTab {
         setting.addButton(button => button.setButtonText('Create shortcut to another vault').onClick(() => {
           new OtherVaultModal(this.app, async (name, target, icon) => {
             await this.vaultShortcuts.createShortcut(undefined, target, name, icon);
-          }, (name, target, icon) => this.vaultShortcuts.openPresetOptions({ action: 'open', target: { kind: 'vault', vault: name } }, target, icon)).open();
+          }, (name, target, icon) => this.vaultShortcuts.openPresetOptions({ action: 'open', target: { kind: 'vault', vault: name } }, target, icon, name)).open();
         }));
       },
     }, {

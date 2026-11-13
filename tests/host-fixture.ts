@@ -109,6 +109,7 @@ interface TestPlugin extends Plugin {
   saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void>;
   saveDefaultIcon(selection: IconSelection): Promise<void>;
   createShortcut(file?: TFile, target?: ShortcutDestination, otherVaultName?: string, icon?: IconSelection): Promise<boolean>;
+  openPresetOptions(request: ShortcutRequest, target: ShortcutDestination, initialIcon: IconSelection, selectedVault?: string): void;
 }
 
 export async function runScenarios(createPlugin: () => TestPlugin): Promise<void> {
@@ -218,6 +219,20 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
   icons.app.vault.files.delete(b.path);
   assert.equal(await optionsDialog.create(request, 'Stale', 'desktop', { mode: 'standard' }), false);
   assert.equal(creations.length, 0, 'A configured shortcut rechecks file existence before creation');
+  const preset: ShortcutRequest = { action: 'open', target: { kind: 'vault', vault: 'Other & café' } };
+  icons.openPresetOptions(preset, 'desktop', { mode: 'default' }, 'Other & café');
+  const otherOptions = optionDialogs.at(-1);
+  assert.ok(otherOptions);
+  assert.deepEqual(otherOptions.context, { kind: 'general', currentVault: 'Test vault', targetVault: 'Other & café' });
+  assert.equal(otherOptions.defaultIcon, undefined, 'Other-vault More options cannot inherit the current vault icon');
+  assert.equal(await otherOptions.create(preset, 'Other vault', 'desktop', { mode: 'standard' }), true);
+  assert.deepEqual(creations.pop(), { os: 'windows', vault: 'Other & café' });
+  assert.equal(await otherOptions.create({ action: 'open', target: { kind: 'vault', vault: 'Test vault' } }, 'Wrong vault', 'desktop', { mode: 'standard' }), false);
+  assert.equal(await otherOptions.create({ action: 'open', target: { kind: 'path', path: 'C:\\Other vault\\Dinner.md' } }, 'Absolute', 'desktop', { mode: 'standard' }), false);
+  for (const request of [{ action: 'hook-get-address' as const }, { action: 'hook-get-address' as const, vault: undefined }]) {
+    assert.equal(await otherOptions.create(request, 'Missing Hook vault', 'desktop', { mode: 'standard' }), false);
+  }
+  assert.equal(creations.length, 0, 'Host callbacks enforce selected-vault context independently of the modal');
   await Promise.all([
     icons.saveContextMenuOption('tags', true),
     icons.saveDefaultIcon({ mode: 'standard' }),

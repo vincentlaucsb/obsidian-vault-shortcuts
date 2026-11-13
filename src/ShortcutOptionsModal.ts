@@ -3,9 +3,8 @@ import type { ButtonComponent, TextComponent } from 'obsidian';
 import { addIconControl } from './IconControl';
 import type { IconSelection } from './IconControl';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
-import { buildShortcutUri, normalizeVaultId } from './shortcuts/requests';
+import { buildShortcutUri, contextVault, normalizeVaultId } from './shortcuts/requests';
 import type { ShortcutContext, ShortcutRequest } from './shortcuts/requests';
-import { discoverVaults, discoveryErrorMessage } from './vaultDiscovery';
 import { ACTION_LABELS, availableActions, describeEffect, draftFromRequest, initialDraft, requestFromDraft } from './UriForm';
 import type { UriAction, UriDraft } from './UriForm';
 
@@ -31,6 +30,7 @@ export class ShortcutOptionsModal extends Modal {
     const generation = ++this.generation;
     const context = this.options.context;
     const currentVault = context.kind === 'file' ? context.vault : context.currentVault;
+    const fixedVault = contextVault(context);
     const bound = context.kind === 'file';
     const allowed = availableActions(context);
     const seeded = this.options.initialRequest ? draftFromRequest(this.options.initialRequest, context) : undefined;
@@ -40,7 +40,7 @@ export class ShortcutOptionsModal extends Modal {
     let draft = drafts.get(action) ?? initialDraft(context, action);
     drafts.set(action, draft);
     let target: ShortcutDestination = Platform.isWin ? this.options.target ?? 'desktop' : 'desktop';
-    let icon: IconSelection = this.options.initialIcon ?? { mode: draft.vault !== currentVault ? 'standard' : 'default' };
+    let icon: IconSelection = this.options.initialIcon ?? { mode: fixedVault !== currentVault ? 'standard' : 'default' };
     let busy = false;
     let nameEdited = false;
     let label = '';
@@ -49,7 +49,6 @@ export class ShortcutOptionsModal extends Modal {
     let createButton: ButtonComponent | undefined;
     let nameInput: TextComponent | undefined;
     let importing = (): boolean => false;
-    let discovery: Promise<string[]> | undefined;
     let validateIcon = (): string | undefined => undefined;
     let vaultReference: 'name' | 'id' = 'name';
     let enteredVaultId = context.kind === 'file' ? context.vaultId ?? '' : '';
@@ -62,7 +61,7 @@ export class ShortcutOptionsModal extends Modal {
     this.setTitle('Create shortcut with options');
     this.modalEl.addClass('vault-shortcuts-uri-modal');
     this.contentEl.addClass('vault-shortcuts-uri-content');
-    this.contentEl.createEl('p', { text: bound ? `${currentVault} / ${context.file}` : currentVault, cls: 'vault-shortcuts-uri-origin' });
+    this.contentEl.createEl('p', { text: bound ? `${fixedVault} / ${context.file}` : fixedVault, cls: 'vault-shortcuts-uri-origin' });
     const previewSetting = new Setting(this.contentEl).setName('URI preview');
     const preview = previewSetting.controlEl.createEl('textarea', { cls: 'vault-shortcuts-uri-preview', attr: { 'aria-label': 'URI preview', rows: '3', spellcheck: 'false' } });
     preview.readOnly = true;
@@ -158,7 +157,7 @@ export class ShortcutOptionsModal extends Modal {
         custom.hidden = mode !== 'custom';
         refresh();
         return Promise.resolve();
-      }, undefined, false);
+      }, undefined, false, false);
       generalPanel.createEl('p', { cls: 'vault-shortcuts-icon-status', text: 'Other-vault targets use the Obsidian icon unless you choose a custom image.' });
       validateIcon = () => mode === 'custom' && !customPath ? 'Choose an image for the custom icon.' : undefined;
     }
@@ -188,7 +187,7 @@ export class ShortcutOptionsModal extends Modal {
         refresh();
         if (!request || !label.trim() || validateIcon()) return;
         const snapshot = request;
-        const selectedIcon = icon.mode === 'default' && draft.vault !== currentVault && context.kind === 'general' && action !== 'new' ? { mode: 'standard' as const } : icon;
+        const selectedIcon = icon.mode === 'default' && fixedVault !== currentVault && context.kind === 'general' ? { mode: 'standard' as const } : icon;
         busy = true; button.setDisabled(true);
         try {
           if (await this.options.create(snapshot, label, target, selectedIcon) && live()) this.close();
@@ -200,8 +199,8 @@ export class ShortcutOptionsModal extends Modal {
     const refresh = (): void => {
       if (!live()) return;
       if (!nameEdited) {
-        const identity = bound ? context.file.split('/').pop() : draft.targetMode === 'file' ? draft.file : draft.targetMode === 'name' ? draft.name : draft.targetMode === 'path' ? draft.path : draft.vault;
-        label = `${identity || currentVault} - ${action === 'open' ? 'Obsidian' : ACTION_LABELS[action]}`;
+        const identity = bound ? context.file.split('/').pop() : draft.targetMode === 'file' ? draft.file : draft.targetMode === 'name' ? draft.name : fixedVault;
+        label = `${identity || fixedVault} - ${action === 'open' ? 'Obsidian' : ACTION_LABELS[action]}`;
         nameInput?.setValue(label);
       }
       effect.setText(describeEffect(action, draft));
@@ -305,50 +304,32 @@ export class ShortcutOptionsModal extends Modal {
           status = fields.createEl('p', { cls: 'vault-shortcuts-icon-status', text: this.options.verifyVaultId ? verificationStatus : 'Vault ID verification is unavailable here. Use the vault name.', attr: { role: 'status', 'aria-live': 'polite' } });
         }
       }
-      if (!manager && !(fileAction && !bound && active.targetMode === 'path')) {
-        const vault = text(fields, 'vault', bound ? 'Vault name' : 'Vault name or ID', bound ? context.vault : action === 'new' ? currentVault : active.vault,
-          value => { active.vault = value; }, bound ? 'Fixed to the clicked file.' : action === 'new' ? 'New notes use the current vault.' : 'Use an exact known vault name or ID.', bound || action === 'new');
-        if (!bound && action !== 'new') {
-          const details = fields.createEl('details');
-          details.createEl('summary', { text: 'Choose a known vault' });
-          const status = details.createEl('p', { text: 'Loading known vaults…' });
-          const list = details.createEl('select', { cls: 'vault-shortcuts-vault-list', attr: { size: '4', 'aria-label': 'Known vaults' } });
-          list.disabled = true;
-          list.onchange = () => { active.vault = list.value; vault.value = list.value; refresh(); };
-          discovery ??= discoverVaults(Platform.isWin);
-          void discovery.then(names => {
-            if (!live() || draft !== active || !details.isConnected) return;
-            for (const name of names) list.createEl('option', { value: name, text: name });
-            list.selectedIndex = -1; list.disabled = names.length === 0;
-            status.setText(names.length ? 'Select a vault or enter its name manually.' : 'No known vaults returned. Manual entry is available.');
-          }).catch((error: unknown) => { if (live() && details.isConnected) status.setText(discoveryErrorMessage(error)); });
-        }
-      }
+      if (!manager) text(fields, 'vault', bound ? 'Vault name' : 'Vault name or ID', fixedVault,
+        () => {}, bound ? 'Fixed to the clicked file.' : 'Fixed to the vault selected before opening this dialog.', true);
       if (fileAction) {
         if (!bound) {
           const choices: [string, string][] = action === 'new' ? [['name', 'Default new-note location'], ['file', 'Vault-relative file path']] :
-            action === 'open' ? [['vault', 'Vault only'], ['file', 'File in vault'], ['path', 'Absolute file path (advanced)']] : [['file', 'File in vault'], ['path', 'Absolute file path (advanced)']];
+            action === 'open' ? [['vault', 'Vault only'], ['file', 'File in vault']] : [['file', 'File in vault']];
           select(fields, 'target-mode', 'Target', active.targetMode, choices, value => {
             const mode = choices.find(([id]) => id === value)?.[0];
-            if (mode === 'vault' || mode === 'file' || mode === 'path' || mode === 'name') active.targetMode = mode;
+            if (mode === 'vault' || mode === 'file' || mode === 'name') active.targetMode = mode;
             renderFields();
           });
         }
         const isMarkdown = (value: string): boolean => !/\.[^/.]+$/.test(value) || /\.md$/i.test(value);
-        const updateFile = (key: 'file' | 'path', value: string): void => {
-          const changedType = isMarkdown(active[key]) !== isMarkdown(value);
-          active[key] = value;
+        const updateFile = (value: string): void => {
+          const changedType = isMarkdown(active.file) !== isMarkdown(value);
+          active.file = value;
           if (!isMarkdown(value)) active.navigation = 'none';
           if (changedType) renderFields();
         };
         if (bound || active.targetMode === 'file') text(fields, 'file', 'File path', bound ? context.file : active.file,
-          value => { updateFile('file', value); }, bound ? 'Fixed to the clicked file.' : 'Vault-relative path including the full extension.', bound);
-        if (!bound && active.targetMode === 'path') text(fields, 'path', 'Absolute file path', active.path, value => { updateFile('path', value); }, 'Native absolute path; replaces the vault/file target.');
-        if (!bound && active.targetMode === 'name') text(fields, 'name', 'Note name', active.name, value => { active.name = value; }, 'Created in the vault’s configured new-note location.');
+          value => { updateFile(value); }, bound ? 'Fixed to the clicked file.' : 'Vault-relative path including the full extension.', bound);
+        if (!bound && active.targetMode === 'name') text(fields, 'name', 'Note name', active.name, value => { active.name = value; }, 'Created in the selected vault’s configured new-note location.');
       }
       if (action === 'open' && (bound ? context.markdown : active.targetMode !== 'vault')) {
         const navigation = fields.createDiv();
-        const path = bound ? context.file : active.targetMode === 'path' ? active.path : active.file;
+        const path = bound ? context.file : active.file;
         const markdown = !/\.[^/.]+$/.test(path) || /\.md$/i.test(path);
         if (markdown) {
           select(navigation, 'navigation', 'Jump to', active.navigation, [['none', 'Start of note'], ['heading', 'Heading'], ['block', 'Block ID']], value => {
@@ -370,7 +351,7 @@ export class ShortcutOptionsModal extends Modal {
       if (action === 'daily') select(fields, 'daily-mode', 'When launched', active.dailyMode,
         [['open', 'Open today’s note'], ['append', 'Append'], ['prepend', 'Prepend'], ['replace', 'Replace contents']], value => {
           active.dailyMode = value === 'append' || value === 'prepend' || value === 'replace' ? value : 'open';
-          if (active.dailyMode !== 'open' && active.contentSource === 'none') active.contentSource = 'text';
+          if (active.dailyMode !== 'open' && active.contentSource === 'none') active.contentSource = 'clipboard';
           renderFields();
         });
       if (isWrite && !(action === 'daily' && active.dailyMode === 'open')) {

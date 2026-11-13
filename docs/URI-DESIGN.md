@@ -1,6 +1,6 @@
 # Vault Shortcuts 1.0.0: URI options design
 
-Approved implementation specification, November 11, 2026. The 1.0.0 work follows
+Approved implementation specification, updated November 12, 2026. The 1.0.0 work follows
 this design. Publishing and merging remain outside the current request.
 
 ## Preview images
@@ -28,6 +28,12 @@ Fixed-note context:
   (default) and a manually pasted, host-verified ID. Navigation and writing are supported without
   allowing a shortcut to silently target a different vault or file.
 - Existing immediate creation actions remain convenient secondary paths.
+- Options dialogs keep their vault fixed: current vault from settings, or the
+  explicitly selected vault from the separate other-vault dialog. Absolute paths
+  are unavailable in options. This supersedes the earlier editable-vault and
+  absolute-path recommendations shown in the original preview images.
+- Fresh writing actions use Clipboard when launched. Preserve explicit text/empty
+  presets and existing drafts; normal Daily Open continues to omit content.
 
 Primary references, checked November 11, 2026:
 
@@ -53,6 +59,8 @@ do not rely on the 1.15.1 beta's heading-only fallback.
 6. General — Icon on every desktop OS: mutually exclusive vault default, custom image, Obsidian icon.
    Choosing custom reveals the existing picker and preview. Other-vault targets
    retain the standard-icon default, rather than inheriting Recipes' icon.
+   The outer radios own icon mode; this custom area shows Choose image and Paste
+   image without inner reset buttons. Standalone controls retain their resets.
    Paste image captures clipboard image data on its explicit click through the
    owning window, then uses the same durable import pipeline. It does not read
    URI writing content, HTML/text or URLs and never tracks later clipboard changes.
@@ -76,7 +84,7 @@ that could accidentally create or overwrite a note during setup.
 | UI action | Core action | Proposed controls |
 | --- | --- | --- |
 | Open vault or file | open | Vault, optional file, navigation target, opening location. |
-| Create a note | new | Current vault, filename/location, content source, opening behavior, existing-file policy. |
+| Create a note | new | Fixed current/selected vault, filename/location, content source, opening behavior, existing-file policy. |
 | Append / prepend / replace note contents | new | Target note, text/clipboard, mutually exclusive operation; heading and spacing for append/prepend. |
 | Today's daily note | daily | Vault, open/capture mode; capture controls as applicable. Daily notes prerequisite. |
 | Create unique note | unique | Vault, text/clipboard, opening location. Unique note creator prerequisite. |
@@ -90,10 +98,12 @@ capabilities and need no separate UI.
 
 ### Opening
 
-Recommend an explicit target mode in the general builder: Vault only, File in a
-vault, or Absolute file path. The latter is an advanced alternative, not another
-field competing with vault/file. Bound-note context cannot select this alternative.
-Keep vault-relative file paths and native absolute paths distinct.
+The general builder offers Vault only or File in a vault. Its vault is read-only
+and supplied by the host before opening; other-vault selection and bounded CLI
+discovery remain in the separate other-vault dialog. Absolute paths are omitted
+because they could override that fixed vault. The model rejects such overrides
+for every options context, even if a caller bypasses the controls. Context-free
+serializer compatibility does not authorize exposing absolute targets in options.
 
 Opening location: current tab (omit paneType), new tab, new tab group, new window.
 Disable this for a vault-only action because no note is being opened.
@@ -108,14 +118,16 @@ retain full extensions and have no Markdown heading/block controls.
 ### Creating and writing
 
 For new notes, offer default new-note location plus name, or an explicit
-vault-relative file path. An absolute native path can be a general-builder
-advanced mode after validating its compatibility; never enable it for bound notes.
-Do not serialize name, file and path together. The user's sketch fixes the vault
-to the current vault for Create a note; retain that behavior in the notebook view.
+vault-relative file path. Use the same fixed current or explicitly selected vault
+for all actions, including Create a note. Do not expose absolute paths or serialize
+name and file together.
 
 Content source: no initial content (creation only), specified text, or clipboard
-when launched. A clipboard shortcut must not read or freeze the clipboard during
-creation. Switching to clipboard excludes the text payload from the URI.
+when launched. Fresh Create, Append, Prepend, Replace, Unique and daily-capture
+drafts default to clipboard; normal Daily Open serializes no content. Explicit
+text/empty presets and prior per-action choices remain unchanged. A clipboard
+shortcut must not read or freeze the clipboard during creation. Switching to
+clipboard excludes the text payload from the URI.
 
 Use one operation control rather than independent append/prepend/overwrite
 checkboxes. For bound notes, actions are explicitly Open, Append, Prepend, Replace;
@@ -155,7 +167,8 @@ as an integration action rather than promising a fixed-note shortcut.
 
 | Context | Target | Available actions | Disabled/omitted options |
 | --- | --- | --- | --- |
-| Notebook/general | Current vault initially; known-vault/manual name or ID when coherent | All core action groups | Create note stays in current vault per sketch. Manager has no vault. Absolute-path target is separate. |
+| Notebook/general | Current vault, read-only | All core action groups | Every action retains that vault. Manager has no vault. No absolute paths or vault discovery/editing in options. |
+| Other-vault More options | Explicit selection passed by the separate other-vault dialog, read-only | All core action groups | Every action, including Create note, retains the selection. No absolute paths or further vault selection in options. |
 | Clicked Markdown note | Current vault by name (default) or verified ID; clicked file read-only | Open, append, prepend, replace | Different vaults, replacement file/path, daily, unique, vault manager, Hook and vault-wide search. |
 | Clicked attachment | Current vault by name (default) or verified ID; clicked file read-only | Open | Writing, heading/block and other unrelated actions. |
 | Tag shortcut | Current vault + selected tag query initially | Search preset | No implied clicked-note write target. |
@@ -181,9 +194,11 @@ creation after success; invalid, unrelated, missing-CLI and stale asynchronous
 results cannot grant an alternate identity. Keep name mode available without the
 CLI. Share the identifier choice across action drafts for the same clicked file.
 
-Notebook/other-vault creation should share the builder without requiring the
-plugin to be installed in another vault. Keep manual names/IDs and bounded CLI
-discovery. Do not scan other notes, internal registries or private vault IDs.
+Notebook/other-vault creation shares the builder without requiring the plugin to
+be installed in another vault. Keep manual names/IDs and bounded CLI discovery in
+the separate other-vault selection dialog; pass its selection as immutable host
+context to More options. Do not scan other notes, internal registries or private
+vault IDs.
 
 ## Architecture and validation
 
@@ -198,8 +213,9 @@ discovery. Do not scan other notes, internal registries or private vault IDs.
   creators retain directory discovery, serialization and exclusive creation.
 - Encode each active parameter value once; omit inactive/false flags and never
   serialize a user-editable raw query string. Validate callback schemes/structure,
-  absolute targets, empty required fields, line breaks and bound-target invariants.
-- Native absolute-path mode must not accidentally override a bound vault/file.
+  empty required fields, line breaks and fixed-vault/file invariants.
+- Options contexts reject native absolute targets and alternate vaults. Raw
+  context-free serializer support is a compatibility boundary, not an options mode.
 - Reject unsupported combinations with an inline explanation, not silent coercion.
 - No direct note-content reads/writes or eager clipboard reads are needed. Editing
   is delegated to core URI handling only when someone launches the shortcut.
@@ -208,7 +224,7 @@ discovery. Do not scan other notes, internal registries or private vault IDs.
 
 ## Implementation and verification sequence
 
-1. Settle the draft scope, including advanced absolute-path and Hook treatment.
+1. Keep the fixed-vault scope and advanced Hook/callback treatment consistent.
 2. Implement and test the union, serializer and validation matrix independently.
 3. Build shared native controls, live preview/copy and bound-vault/note contexts.
 4. Wire settings, file menu, tag and other-vault flows, preserving quick actions.
@@ -235,7 +251,8 @@ discovery. Do not scan other notes, internal registries or private vault IDs.
   display and launch behavior remain experimental until tested on those systems.
   Storage is durable and device-local; copied Finder metadata may be lost through
   incompatible tools/filesystems. See README for paths and external access.
-- Keep Hook/callbacks and absolute-path targeting in advanced controls.
+- Keep Hook/callbacks in advanced controls. Absolute-path targeting is excluded
+  from options under the November 12 fixed-vault decision.
 - Keep normal daily shortcuts governed by Daily notes settings; expose unusual
   inherited parameters only after their behavior has been demonstrated.
 - Use a dropdown for actions to keep the modal shorter than seven radio rows;

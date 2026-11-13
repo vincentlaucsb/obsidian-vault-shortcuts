@@ -77,7 +77,37 @@ void test('write operations serialize one mode and one content source, including
   assert.throws(() => buildShortcutUri({ action: 'new', target, mode: 'append', content: { kind: 'clipboard' }, silent: true, paneType: 'tab' }), /suppressed/);
   const general: ShortcutContext = { kind: 'general', currentVault: fixed.vault };
   assert.doesNotThrow(() => buildShortcutUri({ action: 'new', target: { kind: 'name', vault: fixed.vault, name: 'Soup' }, mode: 'create', content: { kind: 'none' } }, general));
-  assert.throws(() => buildShortcutUri({ action: 'new', target: { kind: 'name', vault: 'Other', name: 'Soup' }, mode: 'create', content: { kind: 'none' } }, general), /current vault/);
+  assert.throws(() => buildShortcutUri({ action: 'new', target: { kind: 'name', vault: 'Other', name: 'Soup' }, mode: 'create', content: { kind: 'none' } }, general), /current or selected vault/);
+});
+
+void test('notebook context rejects alternate vaults and absolute paths at the shared serializer boundary', () => {
+  const otherVault = 'Other recipes';
+  const requests: ShortcutRequest[] = [
+    { action: 'open', target: { kind: 'vault', vault: otherVault, file: 'Soup.md' } },
+    { action: 'new', target: { kind: 'name', vault: otherVault, name: 'Soup' }, mode: 'create', content: { kind: 'clipboard' } },
+    { action: 'new', target: { kind: 'vault', vault: otherVault, file: 'Soup.md' }, mode: 'append', content: { kind: 'clipboard' } },
+    { action: 'daily', vault: otherVault, mode: 'append', content: { kind: 'clipboard' } },
+    { action: 'unique', vault: otherVault, content: { kind: 'clipboard' } },
+    { action: 'search', vault: otherVault, query: 'soup' },
+    { action: 'hook-get-address', vault: otherVault },
+  ];
+  const current: ShortcutContext = { kind: 'general', currentVault: 'Recipes' };
+  const selected: ShortcutContext = { ...current, targetVault: otherVault };
+  for (const request of requests) {
+    assert.throws(() => buildShortcutUri(request, current), /current or selected vault/);
+    assert.doesNotThrow(() => buildShortcutUri(request, selected));
+  }
+  for (const context of [current, selected]) {
+    for (const request of [{ action: 'hook-get-address' as const }, { action: 'hook-get-address' as const, vault: undefined }]) {
+      assert.throws(() => buildShortcutUri(request, context), /current or selected vault/, 'Hook cannot omit the fixed vault');
+      assert.equal(buildShortcutUri(request), 'obsidian://hook-get-address', 'Context-free compatibility remains available');
+    }
+    for (const path of ['C:\\Other vault\\Soup.md', '/home/other/Soup.md']) {
+      assert.throws(() => buildShortcutUri({ action: 'open', target: { kind: 'path', path } }, context), /Absolute paths cannot override/);
+      assert.throws(() => buildShortcutUri({ action: 'new', target: { kind: 'path', path }, mode: 'append', content: { kind: 'clipboard' } }, context), /Absolute paths cannot override/);
+    }
+    assert.equal(buildShortcutUri({ action: 'choose-vault' }, context), 'obsidian://choose-vault');
+  }
 });
 
 void test('daily, unique, search, manager and Hook emit only their supported active parameters', () => {
@@ -122,6 +152,13 @@ void test('generic writer rechecks context and preserves filenames independently
     const customData = await readFile(custom);
     assert.equal(customData.readUInt16LE(0), 0xfeff);
     assert.ok(customData.toString('utf16le').includes(`IconFile=${customIcon}\r\n`));
+    for (const context of [{ kind: 'general' as const, currentVault: 'Recipes' }, { kind: 'general' as const, currentVault: 'Recipes', targetVault: 'Other' }]) {
+      for (const request of [{ action: 'hook-get-address' as const }, { action: 'hook-get-address' as const, vault: undefined }]) {
+        await assert.rejects(writeRequestShortcut(directory, 'url', request, 'Missing Hook vault', undefined, context), /current or selected vault/);
+      }
+      await assert.rejects(writeRequestShortcut(directory, 'url', { action: 'open', target: { kind: 'vault', vault: 'Injected' } }, 'Wrong vault', undefined, context), /current or selected vault/);
+      await assert.rejects(writeRequestShortcut(directory, 'url', { action: 'open', target: { kind: 'path', path: 'C:\\Injected\\Dinner.md' } }, 'Absolute', undefined, context), /Absolute paths cannot override/);
+    }
     await assert.rejects(writeRequestShortcut(directory, 'url', request, ' '), /shortcut name/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

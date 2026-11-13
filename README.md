@@ -27,6 +27,12 @@ target changes cannot escape these constraints. Heading/block suggestions use
 cached metadata; no note contents are read. **More options…** in tag and other-vault
 dialogs opens the builder with that search or vault already selected.
 
+The vault in the options dialog is read-only: plugin settings use the current
+vault, while **More options…** from the other-vault dialog uses the vault selected
+there. Select a different vault in that separate dialog before opening options.
+Every action, including creating a note, stays in that selected vault. Absolute
+file paths are unavailable in options because they could override the fixed vault.
+
 For a clicked file, **Identify vault by** in Advanced defaults to **Vault name**.
 Names are readable and portable when devices use the same name; renames break
 links and duplicate names can be ambiguous. **Vault ID** addresses one registered
@@ -40,6 +46,10 @@ CLI to confirm that the ID resolves to this vault's folder. Creation stays disab
 until verification succeeds; switching to name remains available without the CLI.
 The clicked file stays fixed in both modes. No internal vault registry is read.
 
+Fresh writing actions default to **Clipboard when launched**, including Create,
+Append, Prepend, Replace, unique notes and daily capture. Daily **Open today’s note**
+does not capture content. Explicit choices are retained when switching actions or
+opening a preset; creation also offers **No initial content**.
 Content can be literal text or **Clipboard when launched**. Literal text is stored
 in the shortcut file, so do not embed sensitive text in shortcuts you share. The
 clipboard payload for a writing action is not read during shortcut creation.
@@ -48,9 +58,8 @@ modify a note each time; Replace explicitly replaces its contents. Use an isolat
 test vault when trying writing actions. Callback destinations can receive note
 information and open another app when the shortcut is launched.
 
-Existing quick creation actions remain available. General advanced path targets
-use absolute native paths; fixed-note shortcuts always retain vault-relative
-targets. Creating a new note stays in the current vault.
+Existing quick creation actions remain available. File targets use vault-relative
+paths; shortcut names remain independent of those paths.
 
 See the [design specification and preview images](docs/URI-DESIGN.md) and
 [project plan](docs/PLAN.md).
@@ -123,9 +132,12 @@ Image clipboard access depends on the host's Clipboard API and permissions.
 
 For a vault, choose **Create shortcut with options…** in plugin settings. For a
 file, choose that action in its context menu. The dialog lets you override the
-icon and choose Desktop (plus Start menu on Windows). **Use default** restores
-the current vault default; **Use Obsidian icon** creates a standard icon even when
-the vault has a custom default. The tag dialog includes the same controls.
+icon and choose Desktop (plus Start menu on Windows). Its radio choices select
+**Vault default**, **Custom image**, or **Obsidian icon**. The custom-image area
+contains **Choose image…** and **Paste image**; change icon modes with the radios.
+Standalone controls in settings and the tag/other-vault dialogs keep their reset
+buttons: **Use default** restores the current vault default, and **Use Obsidian
+icon** selects the standard icon even when the vault has a custom default.
 Other-vault shortcuts start with the Obsidian icon and allow a custom image without
 inheriting this vault's default. Canceling the image picker keeps the selection.
 

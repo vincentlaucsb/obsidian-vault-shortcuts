@@ -6,6 +6,45 @@ import type { ShortcutContext } from '../src/shortcuts/requests';
 
 const general: ShortcutContext = { kind: 'general', currentVault: 'Recipes' };
 
+void test('fresh writing drafts default to clipboard while explicit presets preserve their content choice', () => {
+  for (const action of ['new', 'append', 'prepend', 'replace', 'unique', 'daily'] as const) {
+    const draft = initialDraft(general, action);
+    assert.equal(draft.contentSource, 'clipboard', action);
+    if (action === 'new') draft.name = 'Dinner';
+    if (['append', 'prepend', 'replace'].includes(action)) draft.file = 'Dinner.md';
+    const parameters: URLSearchParams = new URL(buildShortcutUri(requestFromDraft(action, draft, general), general)).searchParams;
+    assert.equal(parameters.get('clipboard'), action === 'daily' ? null : 'true', action);
+    assert.equal(parameters.has('content'), false);
+  }
+  for (const content of [{ kind: 'none' as const }, { kind: 'text' as const, text: 'Explicit preset' }]) {
+    const preset = { action: 'new' as const, target: { kind: 'name' as const, vault: 'Recipes', name: 'Dinner' }, mode: 'create' as const, content };
+    const seeded = draftFromRequest(preset, general);
+    assert.equal(seeded.draft.contentSource, content.kind);
+    const request = requestFromDraft(seeded.action, seeded.draft, general);
+    assert.equal(buildShortcutUri(request, general), buildShortcutUri(preset, general));
+  }
+});
+
+void test('notebook requests bind every action to the host-selected vault and reject absolute path overrides', () => {
+  for (const context of [general, { ...general, targetVault: 'Other recipes' }]) {
+    const expected = 'targetVault' in context ? context.targetVault : context.currentVault;
+    for (const action of availableActions(context)) {
+      const draft = initialDraft(context, action);
+      assert.equal(draft.vault, expected);
+      draft.vault = 'Injected vault';
+      if (action === 'new') draft.name = 'Dinner';
+      if (['append', 'prepend', 'replace'].includes(action)) draft.file = 'Dinner.md';
+      const parameters = new URL(buildShortcutUri(requestFromDraft(action, draft, context), context)).searchParams;
+      assert.equal(parameters.get('vault'), action === 'choose-vault' ? null : expected);
+    }
+    for (const action of ['open', 'new', 'append', 'prepend', 'replace'] as const) {
+      const draft = initialDraft(context, action);
+      draft.targetMode = 'path'; draft.path = 'C:\\Other vault\\Dinner.md';
+      assert.throws(() => requestFromDraft(action, draft, context), /Absolute paths cannot override/);
+    }
+  }
+});
+
 void test('bound files default to their name and use only a host-verified ID when requested', () => {
   const context: ShortcutContext = { kind: 'file', vault: 'Recipes', file: 'Dinner.md', markdown: true, vaultId: '1234567890abcdef' };
   for (const action of ['open', 'append', 'prepend', 'replace'] as const) {

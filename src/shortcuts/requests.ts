@@ -6,7 +6,7 @@ export type ContentSource = { kind: 'none' } | { kind: 'text'; text: string } | 
 export type VaultFileTarget = { kind: 'vault'; vault: string; file?: string } | { kind: 'path'; path: string };
 export type NewNoteTarget = VaultFileTarget | { kind: 'name'; vault: string; name: string };
 export type ShortcutContext =
-  | { readonly kind: 'general'; readonly currentVault: string }
+  | { readonly kind: 'general'; readonly currentVault: string; readonly targetVault?: string }
   | { readonly kind: 'file'; readonly vault: string; readonly file: string; readonly markdown: boolean;
       /** Only populated after the host verifies the ID resolves to this vault. */
       readonly vaultId?: string };
@@ -15,6 +15,10 @@ export function normalizeVaultId(value: string): string {
   const id = value.trim();
   if (!/^[0-9a-f]{16}$/i.test(id)) throw new Error('Enter the 16-character vault ID copied from the vault switcher.');
   return id.toLowerCase();
+}
+
+export function contextVault(context: ShortcutContext): string {
+  return context.kind === 'file' ? context.vault : context.targetVault ?? context.currentVault;
 }
 
 interface WriteFields {
@@ -101,9 +105,13 @@ function checkContext(request: ShortcutRequest, context?: ShortcutContext): void
       throw new Error('Attachments support opening only, without Markdown navigation.');
     }
     if (request.action === 'new' && request.mode === 'create') throw new Error('Choose append, prepend or replace for an existing note.');
-  } else if (request.action === 'new' && request.mode === 'create') {
-    if (request.target.kind === 'path' || request.target.vault !== context.currentVault) {
-      throw new Error('Create a note in the current vault.');
+  } else {
+    const fixed = contextVault(context);
+    if ('target' in request) {
+      if (request.target.kind === 'path') throw new Error('Absolute paths cannot override the fixed vault in shortcut options.');
+      if (request.target.vault !== fixed) throw new Error('The shortcut must keep its current or selected vault.');
+    } else if (request.action !== 'choose-vault' && request.vault !== fixed) {
+      throw new Error('The shortcut must keep its current or selected vault.');
     }
   }
 }

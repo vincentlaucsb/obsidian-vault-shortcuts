@@ -165,6 +165,19 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   notes or reading clipboard content during shortcut creation. The detailed draft
   is docs/URI-DESIGN.md. Preserve quick actions and provide the options dialog on
   every supported desktop OS, with destination/icon controls reflecting the OS.
+- Options-dialog vault identity is fixed before opening: current vault from
+  settings, or the explicit other-vault selection passed by that dialog's More
+  options action. Show the vault read-only; keep discovery and manual vault entry
+  in the separate other-vault dialog. Do not expose absolute-path targets in
+  options or allow request/model overrides to escape the fixed vault. Apply the
+  same selected-vault context to every action, including new-note creation.
+- Fresh writing drafts default to Clipboard when launched, including new notes,
+  append/prepend/replace, unique notes and daily capture. Daily Open remains a
+  content-free action. Preserve explicit text/empty choices from presets and
+  action drafts. URI writing content is never read from the clipboard at setup.
+- In shortcut options, the outer icon radio group owns mode selection. Suppress
+  the shared custom-image control's reset buttons there, leaving Choose image
+  and Paste image. Standalone settings/tag/other-vault controls retain resets.
 - Keep Windows `.url` shortcuts with optional icon-file/index fields. Convert images
   locally to multi-resolution ICO, preserving transparency and aspect ratio. Keep
   immutable, content-based icon copies outside the vault and plugin directory;
@@ -199,7 +212,9 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   modal and listbox APIs rather than an undocumented submenu. Tag links use the core
   `obsidian://search` action with an encoded `tag:#name` query. Preserve nested
   tags in the URI and reuse the shared serializers and exclusive writer.
-- Other-vault shortcuts are vault-only. Discover known vault names with the
+- The other-vault selection dialog's quick Create shortcut action is vault-only.
+  More options supports the core action builder bound to that selected vault,
+  including new-note creation. Discover known vault names with the
   official CLI (`vaults verbose`) automatically when the user opens the other-vault
   dialog. Show a selectable list and enable Create shortcut after selection or
   manual entry; do not require a separate discovery button. Parse tab-separated

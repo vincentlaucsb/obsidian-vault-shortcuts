@@ -103,7 +103,7 @@ export function stat(): Promise<{ size: number }> { return Promise.resolve({ siz
 export function readFile(): Promise<Buffer> { return Promise.resolve(Buffer.from('ico')); }
 
 type ControlFactory = (container: ElementFixture, initial: IconSelection,
-  change: (selection: IconSelection) => Promise<void>) => () => boolean;
+  change: (selection: IconSelection) => Promise<void>, defaultPath?: string, allowDefault?: boolean, allowStandard?: boolean) => () => boolean;
 
 export async function runPickerScenarios(addControl: ControlFactory): Promise<void> {
   // Node intentionally has no global createEl. Any use of the main-window
@@ -113,6 +113,8 @@ export async function runPickerScenarios(addControl: ControlFactory): Promise<vo
     const busy = addControl(root, { mode: 'standard' }, value => { changes.push(value); return Promise.resolve(); });
     const choose = Setting.buttons.find(button => button.text === 'Choose image…');
     assert.ok(choose);
+    assert.ok(Setting.buttons.some(button => button.text === 'Use default'), 'Standalone controls retain their default reset');
+    assert.ok(Setting.buttons.some(button => button.text === 'Use Obsidian icon'), 'Standalone controls retain their standard reset');
     const input = elements.find(element => element.tag === 'input');
     assert.ok(input);
     await choose.click();
@@ -235,4 +237,9 @@ export async function runPickerScenarios(addControl: ControlFactory): Promise<vo
       assert.equal(selections.length, 2, 'A clipboard read finishing after close cannot change the icon');
       assert.equal(importing(), false);
     }
+    const start = Setting.buttons.length;
+    const optionsRoot = new ElementFixture('root');
+    addControl(optionsRoot, { mode: 'standard' }, () => Promise.resolve(), undefined, false, false);
+    assert.deepEqual(Setting.buttons.slice(start).map(button => button.text), ['Choose image…', 'Paste image'],
+      'Options custom-image controls expose import actions only; the outer radios own reset choices');
 }

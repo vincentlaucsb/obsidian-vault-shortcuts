@@ -81,7 +81,7 @@ async function importImage(file: ImageSource, workspace: HTMLElement, platform: 
 export function addIconControl(
   container: HTMLElement, initial: IconSelection,
   changed: (selection: IconSelection) => Promise<void>,
-  defaultPath?: string, allowDefault = true,
+  defaultPath?: string, allowDefault = true, allowStandard = true,
 ): () => boolean {
   let selection = initial;
   let busy = false;
@@ -160,7 +160,7 @@ export function addIconControl(
       .finally(() => { setBusy(false); });
   };
   if (allowDefault) setting.addButton(button => { buttons.push(button); button.setButtonText('Use default').onClick(() => { reset({ mode: 'default' }); }); });
-  setting.addButton(button => { buttons.push(button); button.setButtonText('Use Obsidian icon').onClick(() => { reset({ mode: 'standard' }); }); });
+  if (allowStandard) setting.addButton(button => { buttons.push(button); button.setButtonText('Use Obsidian icon').onClick(() => { reset({ mode: 'standard' }); }); });
   void showPreview();
   return () => busy;
 }

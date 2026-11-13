@@ -13,6 +13,33 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**Options flow refinements (November 12, 2026):** fix the general options dialog
+to the current vault, or to the explicit selection passed by the other-vault
+dialog's More options action. Show that identity read-only and keep vault
+discovery/manual selection in the separate other-vault dialog. Absolute-path
+targets are unavailable in options, and the shared model rejects vault/path
+overrides even if a request bypasses the UI. New-note creation uses the same
+fixed selected vault. This supersedes the earlier general-builder editable vault
+and absolute-path design.
+
+Fresh writing actions default to Clipboard when launched, including Create,
+Append, Prepend, Replace, Unique and daily capture. Daily Open still serializes
+no content. Explicit text/empty presets and per-action drafts retain their choice.
+In options, use the three outer icon radios to switch modes; the custom-image
+control shows only Choose image and Paste image. Standalone controls retain
+their reset buttons. Focused production-control, form, model and host tests cover
+these changes.
+
+Live verification in detached Recipes Settings confirmed that the custom-image
+area contains only Choose image and Paste image; Advanced shows Recipes read-only
+without vault discovery; and fresh Create a note defaults to Clipboard when
+launched. Selecting Truck in the other-vault dialog and opening More options
+produced `obsidian://open?vault=Truck` and a read-only Truck identity without a
+vault list. Both dialogs were canceled. No shortcut was created/launched and no
+note was modified. This verifies the available Windows host interaction separately
+from model/automated coverage; the later missing-vault Hook validation fix is
+covered by regression tests rather than this UI session.
+
 **Clipboard images (November 12, 2026):** add Paste image beside Choose image in
 the shared icon control. The explicit click reads supported image data from the
 owning window's Clipboard API and captures a fixed asset through the existing
@@ -205,8 +232,9 @@ including when duplicate names need disambiguation.
 
 **Other-vault convenience:** add a settings action opening a small dialog with
 manual vault-name/ID entry always available, automatic CLI discovery on dialog open, and a
-destination choice (Desktop, plus Start Menu on Windows). Only vault shortcuts
-are supported for other vaults. Run documented `vaults verbose` and validate
+destination choice (Desktop, plus Start Menu on Windows). Its quick Create shortcut
+action creates a vault shortcut. More options opens all core actions bound to
+the selection, including new-note creation. Run documented `vaults verbose` and validate
 tab-separated name/path rows, ignoring observed startup diagnostics. Use names
 for the URI. Support the running Windows app's redirector or older executable
 as well as absolute PATH entries. Close stdin to avoid waiting for Enter.

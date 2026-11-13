@@ -4,6 +4,7 @@ export interface IconControl {
   initial: IconSelection;
   defaultPath?: string;
   allowDefault: boolean;
+  allowStandard: boolean;
   busy: boolean;
   change: (selection: IconSelection) => Promise<void>;
 }
@@ -12,9 +13,9 @@ export const iconControls: IconControl[] = [];
 export function addIconControl(
   _container: unknown, initial: IconSelection,
   changed: (selection: IconSelection) => Promise<void>,
-  defaultPath?: string, allowDefault = true,
+  defaultPath?: string, allowDefault = true, allowStandard = true,
 ): () => boolean {
-  const control = { initial, defaultPath, allowDefault, change: changed, busy: false };
+  const control = { initial, defaultPath, allowDefault, allowStandard, change: changed, busy: false };
   iconControls.push(control);
   return () => control.busy;
 }

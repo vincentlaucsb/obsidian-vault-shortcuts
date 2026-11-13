@@ -140,12 +140,12 @@ export class Setting {
   addButton(callback: (input: Button) => void): this { const input = new Button(this.controlEl); this.buttons.push(input); callback(input); return this; }
 }
 
-export interface IconBoundary { container: Element; initial: IconSelection; defaultPath?: string; busy: boolean; select: (value: IconSelection) => Promise<void> }
+export interface IconBoundary { container: Element; initial: IconSelection; defaultPath?: string; allowDefault: boolean; allowStandard: boolean; busy: boolean; select: (value: IconSelection) => Promise<void> }
 export const icons: IconBoundary[] = [];
 export function addIconControl(_container: unknown, initial: IconSelection,
-  changed: (selection: IconSelection) => Promise<void>, defaultPath?: string): () => boolean {
+  changed: (selection: IconSelection) => Promise<void>, defaultPath?: string, allowDefault = true, allowStandard = true): () => boolean {
   if (!(_container instanceof Element)) throw new Error('Expected owning icon container');
-  const boundary = { container: _container, initial, defaultPath, busy: false, select: changed }; icons.push(boundary); return () => boundary.busy;
+  const boundary = { container: _container, initial, defaultPath, allowDefault, allowStandard, busy: false, select: changed }; icons.push(boundary); return () => boundary.busy;
 }
 
 export function field(key: string): Setting {

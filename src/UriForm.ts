@@ -1,4 +1,5 @@
 import type { ShortcutContext, ShortcutRequest, WriteMode } from './shortcuts/requests';
+import { contextVault } from './shortcuts/requests';
 
 export type UriAction = 'open' | 'new' | 'append' | 'prepend' | 'replace' | 'daily' | 'unique' | 'search' | 'choose-vault' | 'hook-get-address';
 export type Pane = '' | 'tab' | 'split' | 'window';
@@ -37,10 +38,10 @@ export function availableActions(context: ShortcutContext): UriAction[] {
 
 export function initialDraft(context: ShortcutContext, action: UriAction): UriDraft {
   return {
-    vault: context.kind === 'file' ? context.vault : context.currentVault, vaultReference: 'name',
+    vault: contextVault(context), vaultReference: 'name',
     file: context.kind === 'file' ? context.file : '', name: '',
     targetMode: context.kind === 'file' || ['append', 'prepend', 'replace'].includes(action) ? 'file' : action === 'new' ? 'name' : 'vault',
-    path: '', navigation: 'none', anchor: '', contentSource: action === 'new' || action === 'daily' ? 'none' : 'text',
+    path: '', navigation: 'none', anchor: '', contentSource: 'clipboard',
     text: '', heading: '', spacing: 'auto', silent: false, pane: '', query: '', dailyMode: 'open', xSuccess: '', xError: '',
   };
 }
@@ -48,10 +49,10 @@ export function initialDraft(context: ShortcutContext, action: UriAction): UriDr
 export function requestFromDraft(action: UriAction, draft: UriDraft, context: ShortcutContext): ShortcutRequest {
   if (!availableActions(context).includes(action)) throw new Error('This action cannot target the clicked file.');
   if (context.kind === 'file' && draft.vaultReference === 'id' && !context.vaultId) throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
-  const vault = context.kind === 'file' ? draft.vaultReference === 'id' ? context.vaultId ?? context.vault : context.vault : action === 'new' ? context.currentVault : draft.vault;
+  const vault = context.kind === 'file' && draft.vaultReference === 'id' ? context.vaultId ?? context.vault : contextVault(context);
   const file = context.kind === 'file' ? context.file : draft.file;
-  const target = context.kind !== 'file' && draft.targetMode === 'path' ? { kind: 'path' as const, path: draft.path } :
-    { kind: 'vault' as const, vault, ...(file && (context.kind === 'file' || draft.targetMode !== 'vault') ? { file } : {}) };
+  if (context.kind === 'general' && draft.targetMode === 'path') throw new Error('Absolute paths cannot override the fixed vault in shortcut options.');
+  const target = { kind: 'vault' as const, vault, ...(file && (context.kind === 'file' || draft.targetMode !== 'vault') ? { file } : {}) };
   const paneType = draft.pane || undefined;
   const content = draft.contentSource === 'text' ? { kind: 'text' as const, text: draft.text } : { kind: draft.contentSource };
   const xSuccess = draft.xSuccess || undefined;
@@ -59,8 +60,8 @@ export function requestFromDraft(action: UriAction, draft: UriDraft, context: Sh
   if (action === 'hook-get-address') return { action, vault: vault || undefined, xSuccess, xError: draft.xError || undefined };
   if (action === 'search') return { action, vault, query: draft.query };
   if (action === 'open') {
-    const hasFile = target.kind === 'path' || Boolean(target.file);
-    const path = target.kind === 'path' ? target.path : target.file ?? '';
+    const hasFile = Boolean(target.file);
+    const path = target.file ?? '';
     const markdown = !/\.[^/.]+$/.test(path) || /\.md$/i.test(path);
     return { action, target, ...(hasFile ? { paneType } : {}),
       ...(hasFile && markdown && draft.navigation !== 'none' ? { navigation: { kind: draft.navigation, value: draft.anchor } } : {}) };
