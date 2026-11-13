@@ -16,7 +16,7 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 **Folder shortcuts (November 12, 2026):** add one Create folder shortcut… action
 to folder context menus, controlled by the existing Desktop/Windows Start Menu
 visibility toggles. Reuse General/Advanced and the fixed preview. Default to
-Create a note with Clipboard when launched; ask for a note basename and generate
+Create a note with Clipboard when launched; offer an optional note basename and generate
 the core new URI's vault-relative file path directly inside the clicked folder.
 Offer Search this folder as the other action, including descendants with an
 anchored escaped, explicitly case-sensitive path regex. This is core Search, not a file-explorer folder-open
@@ -25,6 +25,20 @@ and writer; reject alternate targets/actions and stale/renamed/replaced folders.
 Root folders work. Keep presets/drafts, icons and destination controls shared.
 No folder scans or direct note/content/clipboard reads are needed. This supersedes
 the original exclusion of folders from all shortcut menus.
+
+Folder names are optional (November 12 refinement). Blank/whitespace names target
+Untitled.md in that folder via the existing core new/file URI. Obsidian allocates
+numbered names on collisions, so each launch creates a fresh note without runtime
+plugin callbacks or timestamps fixed at shortcut creation. Explicit names retain
+their current validation and all other options remain available.
+Live Obsidian 1.15.0 checks in the isolated uri-live-vault/Optional-name-check
+folder created Untitled.md, Untitled 1.md and Untitled 2.md across three launches
+of the same file target, including repeating the exact first URI. The first and
+second payloads remained intact in their original files. Recipes dialog checks
+confirmed the optional label/help, blank-name new/file URI with clipboard=true,
+and enabled creation without entering a name; that dialog was canceled. No
+Recipes note was modified. The numbered-allocation check is native host evidence,
+separate from the form/model/production-control automated regressions.
 
 Production-control/model/writer/host coverage includes root, nested/Unicode names,
 target escapes, draft preservation, menu toggles, and moved/replaced folders.

@@ -29,8 +29,10 @@ dialogs opens the builder with that search or vault already selected.
 
 Right-click a folder and choose **Create folder shortcut…** to create a note
 directly inside it when the shortcut launches. Advanced defaults to **Create a
-note** with **Clipboard when launched**; enter the note name, with `.md` or no
-extension. The vault and clicked folder stay fixed. **Search this folder** instead
+note** with **Clipboard when launched**. Leave **Note name (optional)** blank for
+a fresh `Untitled.md`, `Untitled 1.md`, etc. on each launch, or supply a name with
+`.md` or no extension. Obsidian allocates the name when launched; existing notes
+are preserved. The vault and clicked folder stay fixed. **Search this folder** instead
 opens core Search for that exact folder and its subfolders (case-sensitive), subject to Search exclusions;
 it does not expand the folder in the file explorer. Existing Desktop/Start menu
 context-menu toggles control visibility, and root-folder shortcuts work too.

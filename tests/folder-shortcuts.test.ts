@@ -13,7 +13,14 @@ void test('folder forms bind new notes and searches to root, nested and Unicode 
     const context: ShortcutContext = { kind: 'folder', vault: 'Recipes', folder };
     assert.deepEqual(availableActions(context), ['new', 'search']);
     const draft = initialDraft(context, 'new');
-    assert.throws(() => requestFromDraft('new', draft, context), /note name/);
+    for (const name of ['', '   ']) {
+      draft.name = name;
+      const unnamed = requestFromDraft('new', draft, context);
+      const unnamedParameters: URLSearchParams = new URL(buildShortcutUri(unnamed, context)).searchParams;
+      assert.equal(unnamedParameters.get('file'), `${folder ? `${folder}/` : ''}Untitled.md`);
+      assert.equal(unnamedParameters.get('clipboard'), 'true');
+      for (const key of ['overwrite', 'append', 'prepend', 'name', 'path']) assert.equal(unnamedParameters.has(key), false);
+    }
     draft.name = 'Soup.md'; draft.vault = 'Injected'; draft.file = 'Elsewhere/Injected.md'; draft.targetMode = 'path'; draft.path = '/tmp/Injected.md';
     const request = requestFromDraft('new', draft, context);
     const parameters = new URL(buildShortcutUri(request, context)).searchParams;
@@ -22,7 +29,7 @@ void test('folder forms bind new notes and searches to root, nested and Unicode 
     assert.equal(parameters.get('clipboard'), 'true');
     assert.equal(parameters.has('path') || parameters.has('name'), false);
     assert.equal(draftFromRequest(request, context).draft.name, 'Soup.md');
-    for (const name of ['../Escape', 'Nested/Escape', 'Nested\\Escape', '.', '..', '#heading', '']) {
+    for (const name of ['../Escape', 'Nested/Escape', 'Nested\\Escape', '.', '..', '#heading']) {
       draft.name = name;
       assert.throws(() => requestFromDraft('new', draft, context), /note name/);
     }

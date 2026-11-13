@@ -136,11 +136,15 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 - Folder file menus have one Create folder shortcut… action when Desktop or the
   available Windows Start Menu toggle is enabled. Reuse the options dialog,
   defaulting to Create a note with Clipboard when launched, plus Search this
-  folder. Fix the clicked vault/folder in host/model/writer validation; ask for
-  a note basename and create directly inside that folder via the core new/file
-  URI. Search includes descendants using an anchored, escaped, explicitly
-  case-sensitive path regex, not a
-  folder-open URI. Root folders are supported. Reject stale/moved/replaced folders
+  folder. Fix the clicked vault/folder in host/model/writer validation; offer an
+  optional note basename and create directly inside that folder via core new/file.
+  Blank/whitespace names use Untitled.md; let Obsidian allocate numbered names on
+  each launch, without overwrite/append/prepend or creation-time timestamps.
+  Verify repeated launches in an isolated test vault, preserving earlier notes.
+  Keep user-supplied names validated and all content/icon/destination options.
+  Search includes descendants using an anchored, escaped, explicitly
+  case-sensitive path regex, not a folder-open URI. Root folders are supported.
+  Reject stale/moved/replaced folders
   before creation. No folder scans, direct note edits or new menu preference.
 - Vault action: plugin settings button. Note action: note context menu, using the
   clicked file, not the active note. Retain existing commands as secondary access.

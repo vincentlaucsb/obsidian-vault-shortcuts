@@ -203,7 +203,8 @@ export class ShortcutOptionsModal extends Modal {
         label = `${identity || fixedVault} - ${action === 'open' ? 'Obsidian' : ACTION_LABELS[action]}`;
         nameInput?.setValue(label);
       }
-      effect.setText(context.kind === 'folder' && action === 'search' ? 'When launched, searches the clicked folder and its subfolders. This does not expand a folder in the file explorer.' : describeEffect(action, draft));
+      effect.setText(context.kind === 'folder' && action === 'search' ? 'When launched, searches the clicked folder and its subfolders. This does not expand a folder in the file explorer.' :
+        context.kind === 'folder' && action === 'new' && !draft.name.trim() ? 'When launched, creates a new Untitled note in this folder, adding a number if needed. Clipboard content is read only when launched; specified text is stored in the shortcut.' : describeEffect(action, draft));
       try {
         if (bound && vaultReference === 'id' && (!verifiedVaultId || enteredVaultId.trim().toLowerCase() !== verifiedVaultId)) {
           throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
@@ -308,7 +309,7 @@ export class ShortcutOptionsModal extends Modal {
         () => {}, bound ? 'Fixed to the clicked file.' : 'Fixed to the vault selected before opening this dialog.', true);
       if (context.kind === 'folder') {
         text(fields, 'folder', 'Folder', context.folder || '/', () => {}, 'Fixed to the clicked folder.', true);
-        if (action === 'new') text(fields, 'name', 'Note name', active.name, value => { active.name = value; }, 'Created directly in this folder when launched. Use a name with .md or no extension.');
+        if (action === 'new') text(fields, 'name', 'Note name (optional)', active.name, value => { active.name = value; }, 'Leave blank for a new Untitled note on each launch. Obsidian adds a number when needed. Optional names accept .md or no extension.');
       }
       if (fileAction && context.kind !== 'folder') {
         if (!bound) {

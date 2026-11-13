@@ -51,10 +51,10 @@ export function requestFromDraft(action: UriAction, draft: UriDraft, context: Sh
   if (!availableActions(context).includes(action)) throw new Error('This action cannot target the clicked file.');
   if (context.kind === 'file' && draft.vaultReference === 'id' && !context.vaultId) throw new Error('Verify this vault ID before creating the shortcut, or use the vault name.');
   const vault = context.kind === 'file' && draft.vaultReference === 'id' ? context.vaultId ?? context.vault : contextVault(context);
-  if (context.kind === 'folder' && action === 'new' && (!draft.name.trim() || /[\\/#]/.test(draft.name) || draft.name === '.' || draft.name === '..')) {
+  if (context.kind === 'folder' && action === 'new' && draft.name.trim() && (/[\\/#]/.test(draft.name) || draft.name === '.' || draft.name === '..')) {
     throw new Error('Enter a note name without path separators, parent-directory segments or #.');
   }
-  const file = context.kind === 'file' ? context.file : context.kind === 'folder' ? `${context.folder ? `${context.folder}/` : ''}${draft.name}` : draft.file;
+  const file = context.kind === 'file' ? context.file : context.kind === 'folder' ? `${context.folder ? `${context.folder}/` : ''}${draft.name.trim() ? draft.name : 'Untitled.md'}` : draft.file;
   if (context.kind === 'general' && draft.targetMode === 'path') throw new Error('Absolute paths cannot override the fixed vault in shortcut options.');
   const target = { kind: 'vault' as const, vault, ...(file && (context.kind === 'file' || draft.targetMode !== 'vault') ? { file } : {}) };
   const paneType = draft.pane || undefined;

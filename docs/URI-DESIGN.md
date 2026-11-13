@@ -206,8 +206,10 @@ vault IDs.
 - Folder context uses core new/file for creation and search/query for folder
   search. There is no documented folder-open URI. Both actions fix the clicked
   vault/folder in the form, host, model and writer; empty root identity is valid.
-  New-note name is required, defaults to clipboard content and cannot contain
-  path separators or parent segments. Search query is read-only and generated
+  New-note name is optional and content defaults to clipboard. Blank/whitespace
+  names use Untitled.md; core new allocates numbered names on subsequent launches,
+  without overwrite/append/prepend flags or setup-time timestamps. Explicit names
+  cannot contain path separators or parent segments. Search query is read-only and generated
   from the complete escaped folder prefix, including a boundary slash and explicit
   match-case wrapper, so sibling names, case variants and regex/search syntax
   cannot broaden it. Host rechecks the same folder

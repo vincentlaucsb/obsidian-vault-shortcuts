@@ -377,7 +377,13 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(field('vault').inputs[0].inputEl.readOnly, true);
   assert.equal(field('content-source').dropdowns[0].value, 'clipboard');
   assert.ok(absent('target-mode') && absent('file'), 'Folder creation asks for a basename, not an arbitrary target');
-  assert.equal(button('Create shortcut').disabled, true, 'A note name is required');
+  assert.equal(field('name').name, 'Note name (optional)');
+  assert.equal(button('Create shortcut').disabled, false, 'Blank name creates a fresh Untitled note at launch');
+  assert.equal(uri(folder).searchParams.get('file'), 'Meals & café/Soups/Untitled.md');
+  await button('Create shortcut').click();
+  const unnamed = folderCreations.at(-1);
+  assert.ok(unnamed?.action === 'new');
+  assert.equal(unnamed.mode, 'create');
   await text('name', 'Soup.md');
   assert.equal(uri(folder).searchParams.get('file'), 'Meals & café/Soups/Soup.md');
   await text('name', '../Escape.md');
@@ -400,6 +406,10 @@ export async function runUriModalScenarios(factory: Factory): Promise<void> {
   assert.equal(uri(folder).searchParams.get('file'), 'Meals & café/Soups/Soup.md');
   await button('Create shortcut').click();
   assert.equal(folderCreations.at(-1)?.action, 'new');
+  await text('name', '');
+  assert.equal(uri(folder).searchParams.get('file'), 'Meals & café/Soups/Untitled.md');
+  assert.equal(uri(folder).searchParams.get('content'), 'Keep my recipe draft');
+  assert.equal(button('Create shortcut').disabled, false);
   folder.close();
   const beforeLinuxIcons = icons.length;
   const linux = factory({ context: { kind: 'general', currentVault: 'Recipes' }, create: () => Promise.resolve(true) });
