@@ -69,6 +69,24 @@ official recommended checks. No rule was weakened.
 - Native macOS/Linux behavior remains experimental. Automated Windows UI tests
   do not prove native picker visibility, icon display or shortcut launching.
 
-Source push to master is authorized. No release tag, publication, listing edit
-or reviewer message is authorized by that push. Hosted warning clearance remains
-unverified until the service reviews the relevant new source/release.
+The initial source-push authorization did not include publication. The user
+subsequently explicitly authorized publishing 1.0.0 and verifying hosted clearance.
+
+## Published release verification
+
+[Version 1.0.0](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/releases/tag/1.0.0)
+was published on November 15 at 21:39 UTC from `bb930ad`, through successful
+[release workflow 43764832555](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/actions/runs/43764832555).
+The tag remains fixed at that commit. All three published assets were downloaded;
+`gh attestation verify` passed for main.js, manifest.json and styles.css, with
+provenance referencing the 1.0.0 tag and release commit.
+
+After requesting the directory's release check, the signed-in 1.0.0 review and
+refreshed public scorecard both report verified GitHub artifact attestations for
+main.js and styles.css. The missing-attestations warnings have cleared. The public
+scorecard also confirms no vulnerable dependencies, no suspicious network
+patterns, no obfuscation, and a byte-for-byte reproducible main.js build.
+
+Remaining findings describe required filesystem, subprocess and clipboard
+capabilities; malware scanning remains unavailable from the review service.
+These are distinct from the resolved attestation findings.
