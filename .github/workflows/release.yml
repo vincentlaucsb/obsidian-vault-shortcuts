@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -25,6 +25,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Check out the release tag
         uses: actions/checkout@v4
@@ -53,6 +57,11 @@ jobs:
               throw new Error('Lockfile root package version must match ' + tag);
             }
           }
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+          const versions = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+          if (versions[tag] !== manifest.minAppVersion) {
+            throw new Error('versions.json must match the release minimum app version.');
+          }
           NODE
 
       - name: Install dependencies
@@ -64,14 +73,25 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify release assets
+        run: |
+          for asset in main.js manifest.json styles.css; do
+            test -s "$asset"
+          done
+
+      - name: Generate release asset attestations
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
       - name: Attach Obsidian release files
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          for asset in main.js manifest.json styles.css; do
-            test -s "$asset"
-          done
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber
           else

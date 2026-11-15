@@ -157,9 +157,17 @@ async function storeIconAsset(data: Buffer, directory: string, extension: 'ico' 
       let matches = false;
       // Another Obsidian process may still be completing its exclusive copy.
       for (let attempt = 0; attempt < 5; attempt++) {
-        if (!(await lstat(destination)).isFile()) break;
-        if ((await readFile(destination)).equals(data)) { matches = true; break; }
-        await setTimeout(25);
+        try {
+          if (!(await lstat(destination)).isFile()) break;
+          if ((await readFile(destination)).equals(data)) { matches = true; break; }
+        } catch (readError: unknown) {
+          // Windows may hold the destination busy while the winning copy closes.
+          // Retry only that transient condition, retaining other filesystem errors.
+          if (!(readError instanceof Error && 'code' in readError && readError.code === 'EBUSY') || attempt === 4) {
+            throw readError;
+          }
+        }
+        if (attempt < 4) await setTimeout(25);
       }
       if (!matches) {
         throw new Error('An existing icon asset is damaged. Choose the standard icon or repair local icon storage.');

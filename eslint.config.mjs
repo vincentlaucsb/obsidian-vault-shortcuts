@@ -5,7 +5,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig(
   globalIgnores([
     'node_modules/**', 'main.js', 'esbuild.config.mjs', 'package.json',
-    'package-lock.json', 'tsconfig.json', '.test-build/**',
+    'package-lock.json', 'tsconfig.json', 'versions.json', '.test-build/**',
   ]),
   ...obsidianmd.configs.recommended,
   {
@@ -17,7 +17,25 @@ export default defineConfig(
         extraFileExtensions: ['.json'],
       },
     },
-    rules: { '@typescript-eslint/no-explicit-any': 'error' },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-deprecated': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/prefer-promise-reject-errors': 'error',
+      'obsidianmd/no-unsupported-api': 'error',
+      'obsidianmd/no-tfile-tfolder-cast': 'error',
+      'obsidianmd/settings-tab/no-deprecated-display': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: 'ImportExpression',
+        message: 'Use static runtime imports so the desktop bundle uses host-compatible CommonJS.',
+      }],
+    },
   },
   {
     files: ['src/ShortcutOptionsModal.ts'],

@@ -199,24 +199,17 @@ The plan is **end-user testing and issue reports**. Automated checks do not esta
 that a live Obsidian command or Desktop double-click works on every platform.
 Mac/Linux behavior has not been tested on those operating systems in this workspace.
 
-## Build and install
+## Install
 
-Use Node 22 or newer for development. Install the locked dependencies, then run:
+For the published version, find **Vault Shortcuts** in Obsidian's Community
+plugins browser. The [official registry](https://github.com/obsidianmd/obsidian-releases/blob/master/community-plugins.json)
+lists this repository under `vault-shortcuts`. Published downloads are available
+on the [releases page](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/releases);
+development documentation may describe features not yet released.
 
-```text
-npm ci --ignore-scripts
-npm run lint
-npm run build
-npm test
-```
-
-Copy `main.js`, `manifest.json` and `styles.css` to the `vault-shortcuts` folder in your vault's
-configured plugins directory (normally `<vault>/.obsidian/plugins/vault-shortcuts/`).
-Reload Obsidian and enable **Vault Shortcuts** in Community plugins. The stylesheet
-sizes the vault list. The compiled JavaScript includes the plugin's runtime helpers.
-
-No release or directory submission has been published as part of this implementation.
-Use a test vault when trying a development build.
+For manual installation, download main.js, manifest.json and styles.css from the
+release and place them in your vault's configured plugins directory under
+`vault-shortcuts`. Reload Obsidian and enable **Vault Shortcuts**.
 
 ## Privacy and external file access
 
@@ -224,6 +217,8 @@ The shared **Paste image** control reads clipboard image data only after an
 explicit click, through that control's owning window. It does not poll the
 clipboard, read text/HTML payloads, fetch clipboard URLs or write to the clipboard.
 Imported image assets follow the same storage and retention rules as chosen files.
+The separate **Copy URI** button writes the displayed URI to the clipboard only
+when explicitly clicked.
 
 This plugin writes files **outside your vault, on your Desktop**, only when you
 invoke a creation action. It queries the system for that directory and uses Node
@@ -294,7 +289,8 @@ Obsidian's built-in URI handler and do not require this plugin to remain enabled
 
 File shortcuts preserve the complete extension and use Obsidian’s URI handler.
 How a file opens depends on Obsidian and any installed file-viewer plugins;
-creating a CSV shortcut does not add CSV viewing support. Folders are excluded.
+creating a CSV shortcut does not add CSV viewing support. Folder shortcuts create
+a note inside the selected folder or search that folder and its descendants.
 
 - Obsidian must be installed with a working `obsidian://` association. If the file
   was created but does not open Obsidian, report a launch/association issue rather
@@ -303,7 +299,8 @@ creating a CSV shortcut does not add CSV viewing support. Folders are excluded.
   are ambiguous. Renaming a vault or moving/renaming a note can break a shortcut;
   recreate it afterward. Shortcuts are not tracked or automatically repaired.
 - Note paths containing `#` are rejected because Obsidian interprets that character
-  as a heading separator after decoding. No folder, heading or batch shortcuts.
+  as a heading separator after decoding. Heading and block navigation are available
+  for Markdown files through the options dialog. Batch creation is not supported.
 - Tag shortcuts require the core Search plugin to be enabled. Renaming a tag
   does not update an existing shortcut; recreate it with the new tag.
 - Unavailable, disabled or unwritable Desktop folders produce an error; the plugin
@@ -321,38 +318,7 @@ already running, and whether Desktop is redirected/synced. Include the default
 browser if it affects URI routing. Redact private names and paths from examples.
 Report problems in the [issue tracker](https://github.com/vincentlaucsb/obsidian-vault-shortcuts/issues).
 
-## Development
-
-Read [AGENTS.md](AGENTS.md) for strict TypeScript and official Obsidian review rules,
-and [docs/PLAN.md](docs/PLAN.md) for decisions and the creator interface. The runtime uses
-`IShortcutCreator`, a public `ShortcutCreator` factory/facade and one creator per OS.
-URI construction and safe file creation are shared.
-
-Implementation lives in `src/`, with entry point `src/main.ts` and creators/helpers
-in `src/shortcuts/`. Tests and fixtures live in `tests/`. Build configuration and
-the generated `main.js` remain at the repository root, preserving installed symlinks.
-
-`npm test` runs the fast suite. On Windows with Obsidian 1.15.0 installed,
-`npm run test:ui` runs real-host Playwright regressions in fresh fictional vaults;
-`npm run screenshots` generates the light/dark listing assets. Both commands build
-first. See [UI testing](docs/UI-TESTING.md) for executable selection, isolation,
-reviewed visual baselines and the remaining native OS checks. Existing Linux CI
-checks these TypeScript files but does not launch the Windows host.
-
-## Releases
-
-GitHub Actions runs lint, tests and the build for pushes to master and pull requests.
-To release, update the version in manifest.json, package.json and package-lock.json
-(including its root package entry), commit the changes, and push a matching tag
-such as 0.0.3, without a v prefix. Push the version commit to master as well, so the
-Community directory sees the correct manifest on the default branch.
-
-The Release workflow builds that tag and attaches main.js, manifest.json and
-styles.css to a GitHub release after all checks pass. Generated main.js stays out
-of source control. The workflow can also be run manually against an existing tag;
-a rerun replaces same-named release attachments. Do not move published tags; use
-a new version for changes. Linux CI skips the two native Windows integration tests;
-run npm test on Windows before a release to exercise those as well.
+For contributor setup, testing and release procedures, see the [development guide](docs/DEVELOPMENT.md).
 
 ## License
 

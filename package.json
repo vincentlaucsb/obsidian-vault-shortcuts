@@ -11,6 +11,11 @@
     "test:ui:update": "npm run build && playwright test --config tests/e2e/playwright.config.ts --grep-invert @listing --update-snapshots",
     "screenshots": "npm run build && playwright test --config tests/e2e/playwright.config.ts --grep @listing"
   },
+  "engines": { "node": ">=22.13.0" },
+  "overrides": {
+    "moment": "2.31.0",
+    "minimatch@>=7 <11.0.1": "11.0.1"
+  },
   "devDependencies": {
     "@playwright/test": "1.65.0",
     "@types/node": "^22.0.0",

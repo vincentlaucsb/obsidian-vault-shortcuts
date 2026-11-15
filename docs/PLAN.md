@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated November 12, 2026. This is the consolidated plan for the feasibility
+Updated November 15, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -12,6 +12,51 @@ and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**Review remediation follow-up (November 15, 2026):** adapted csvzall's Obsidian
+review and consumer-documentation guidance; removed the manifest description's
+redundant branding, added checked compatibility metadata, patched vulnerable
+development dependencies and fixed a reproduced Windows EBUSY icon deduplication
+failure with bounded retries. All 52 tests, strict build and zero-warning lint
+pass. See [the dated review](obsidian-review-2026-11-15.md) for evidence,
+dispositions and validation limits. The user authorized pushing source directly
+to master; release publication remains separate.
+
+**Review guidance consolidation (November 15, 2026):** adapt csvzall's Obsidian
+review, consumer README and version-discipline guidance to this desktop utility.
+AGENTS retains the existing feature, type-safety and host-verification constraints
+and now links a manual evidence/remediation workflow. Review every scorecard
+section, preserve required filesystem/process capabilities, fix deprecated APIs
+and dependency findings, and compare hosted feedback with its exact revision.
+The supplied preview for master 5335c68 explicitly rejects “Obsidian” in the
+manifest description. Build/development/release details now live in
+[DEVELOPMENT.md](DEVELOPMENT.md); README keeps consumer installation and required
+privacy disclosures. No csvzall-specific mobile/helper workflows or unavailable
+scripts/skills are adopted. Source push authorization is separate from publication.
+
+**Release attestations (November 15, 2026):** mirror obsidian-csvzall's
+`actions/attest@v4` build-provenance step for main.js, manifest.json and styles.css.
+Check all three assets are nonempty after the checked build and attest the exact
+files before uploading. A failed attestation blocks publication. Scope
+contents/id-token/attestations write permissions to the release job. The
+development guide documents verification with `gh attestation verify`.
+This prepares the workflow; local checks cannot create GitHub attestations or
+remove a warning on existing releases. Publication remains separately authorized.
+
+Pre-release sweep: strict TypeScript/production build, zero-warning official lint
+and all 50 fast tests passed on Windows. All seven isolated Obsidian 1.15.0 UI
+tests passed with unchanged visual baselines. The sandbox prevented host startup;
+the successful run used the explicit installed executable outside the sandbox,
+with the harness's synthetic profiles and native-process guard intact. These
+tests do not establish native picker visibility or Desktop icon launching.
+Release YAML parsing, asset subjects,
+permission scope and attestation-before-upload ordering were checked locally.
+README's obsolete folder/heading exclusions were corrected and Copy URI clipboard
+writes explicitly disclosed. The official community registry already maps this
+plugin's name/ID to this repository (checked November 15); installation guidance
+now distinguishes published downloads from development features. Keep the tested
+1.15.0 minimum even though the current stable release is 1.15.1. Native macOS/Linux
+verification remains unavailable; these platforms remain experimental.
 
 **Playwright UI tests and listing assets (November 12, 2026):** add Windows
 real-Obsidian tests using a pinned 1.15.0 host, synthetic Recipe Box vaults and

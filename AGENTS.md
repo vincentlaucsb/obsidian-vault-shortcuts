@@ -56,7 +56,10 @@ Source: [Submission requirements](https://docs.obsidian.md/community-directory/s
   follow the official fallback of the latest stable Obsidian version at release
   preparation; verify that version then rather than inventing a baseline.
 - Description: concise action-oriented text, at most 250 characters, ending in a
-  period; no emoji or introductory “This is a plugin” boilerplate.
+  period; no emoji or introductory “This is a plugin” boilerplate. Do not include
+  “Obsidian” in the description: the November 15, 2026 preview feedback for master
+  commit 5335c68 explicitly flagged it. Check the next preview before claiming
+  that hosted finding is cleared.
 - Do not prefix command IDs with the plugin ID. Remove template/sample code.
 - Only use `fundingUrl` for financial-support links; omit it when unused.
 
@@ -69,7 +72,8 @@ Source: [Manifest reference](https://docs.obsidian.md/Reference/Manifest).
   end in `plugin`. Match the local installation folder to the ID.
 - Verify final name/ID uniqueness. Do not name the plugin after an Obsidian core
   feature or include “Obsidian”, its prohibited variations, or “Plugin” in its name.
-- `Vault Shortcuts` / `vault-shortcuts` are working values, not proof of availability.
+- The official community registry maps `Vault Shortcuts` / `vault-shortcuts` to
+  this repository (verified November 15, 2026). Preserve that established identity.
 - `isDesktopOnly` is not an OS selector. Describe supported/experimental platforms
   accurately and handle unsupported platforms gracefully.
 
@@ -316,6 +320,70 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 ## Build and submission workflow
 
+### Obsidian review rules
+
+- For scorecard, submission or validation feedback, follow
+  [the remediation workflow](docs/obsidian-warning-remediation.md). Start with
+  supplied evidence, inspect every finding including Other and Disclosures, and
+  compare its version/commit with local source. Record dispositions and validation
+  in a dated report under docs/. This is not a gate for unrelated edits.
+- Direct Filesystem Access and Shell Execution are required desktop capabilities:
+  this plugin writes external shortcuts/icons and queries native directories or
+  the official CLI. Preserve them and `isDesktopOnly: true`; do not hide imports,
+  weaken scanning or remove functionality merely to remove capability warnings.
+  Keep README disclosures accurate and process arguments separate from fixed code.
+- Deprecated-method notices under Other are actionable even when informational.
+  Use supported replacements and check their introduction versions. Keep the
+  minimum at the lowest version required by used APIs and the tested release
+  baseline; enforce compatibility with `obsidianmd/no-unsupported-api`. Runtime
+  guards do not replace required minimum-version metadata updates.
+- Settings use declarative definitions supported by the declared minimum. Keep
+  indexing cheap and side effects in render/action callbacks. Keep general
+  controls at the top without a redundant heading and use sentence case.
+- Preserve native Modal titles, theme typography and semantic control APIs.
+  Scope custom CSS to feature layout; do not restyle native control colors,
+  fonts, padding or alignment. Display rules must respect `[hidden]`; avoid
+  `!important` overrides and use explicit layout classes rather than `:has()`.
+- Inspect dependency advisory ranges and paths (`npm explain <package>`), fix
+  affected dependencies and update the lockfile. Externalizing a runtime API
+  does not exempt its installed typings or transitive packages from audit review.
+  Revisit overrides when upstream constraints change; never suppress findings.
+- Keep production builds independent of Git metadata and generated local state.
+  Review clean-source installation/build behavior when changing build tooling.
+  Do not bypass required checks in source archives.
+
+### README writing
+
+README is consumer-facing copy for the Community plugin page. Lead with useful
+outcomes and examples, use plain language and concise paragraphs, and preserve
+the author's voice. Let self-explanatory controls explain themselves; focus on
+surprising behavior, practical platform limits and required privacy disclosures.
+Verify suspected factual problems against implementation or authoritative sources.
+Put detailed tutorials, architecture, testing, packaging and release workflows in
+docs/, linking them when useful. Keep maintainer-only material out of README.
+
+### Version discipline
+
+- `manifest.json` owns the plugin version and minimum app version.
+- `versions.json` maps each released/candidate plugin version to its minimum app
+  version. Keep the current entry aligned with manifest changes.
+- `package.json` and both root version entries in `package-lock.json` must match
+  the plugin version. The release tag is the same x.y.z value, without a v prefix.
+- Dependency versions, toolchain versions and pinned UI host versions are
+  independent of the plugin version; do not conflate their updates.
+- `package.json` engines.node defines the build-tool Node baseline. Its Moment
+  and scoped minimatch overrides pin patched development dependencies; revisit
+  their advisory ranges when upstream dependency constraints change.
+- Check remote tags and GitHub releases before changing the candidate version.
+  An untagged, unreleased candidate keeps its planned version for validation or
+  dependency fixes. Local metadata and preparation commits are not publication.
+  Corrections changing source/artifacts bound to a public tag or release require
+  a new patch version. Never move, delete or rewrite public tags/releases to hide
+  a correction. Retrying unchanged tag/artifacts keeps the same version.
+- Add new version-bearing files/fields to this list in the same change.
+
+See [Development and releases](docs/DEVELOPMENT.md) for commands and packaging.
+
 Source: [Current official submission guide](https://docs.obsidian.md/plugins/releasing/submit-plugin).
 
 The current submission route is the Community directory with linked Obsidian and
@@ -328,8 +396,14 @@ incremented release. Recheck the guide when actually submitting.
 
 Workflows: checks.yml runs lint/tests/build on master pushes and pull requests.
 release.yml builds an existing x.y.z tag, validates manifest/package/lockfile
-versions, and attaches main.js, manifest.json and styles.css. Never commit the
-generated bundle. Release reruns replace existing attachments; do not move tags.
+versions, verifies nonempty main.js, manifest.json and styles.css, and generates
+GitHub build-provenance attestations with actions/attest before attaching those
+exact files. Attestation failure must stop publication. Limit contents/id-token/
+attestations write permissions to the release job. Never commit the generated
+bundle. Release reruns replace existing attachments; do not move tags.
+Local builds do not generate GitHub attestations; verify downloaded release assets
+with `gh attestation verify <asset> --repo vincentlaucsb/obsidian-vault-shortcuts`
+after an authorized release workflow succeeds.
 Linux CI skips native Windows tests; run them locally on Windows before releasing.
 
 Local pre-release checklist:
