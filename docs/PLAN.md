@@ -13,6 +13,12 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**README rewrite (November 15, 2026):** the user requested a readable consumer
+README capped at 30 prose sentences, excluding bullets, and removal of the
+privacy notice and obvious clipboard explanations. Lead with installation,
+creation actions and useful options; retain concise storage locations and
+platform limitations. Keep detailed maintenance guidance in docs/.
+
 **Review remediation follow-up (November 15, 2026):** adapted csvzall's Obsidian
 review and consumer-documentation guidance; removed the manifest description's
 redundant branding, added checked compatibility metadata, patched vulnerable

@@ -354,8 +354,12 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 ### README writing
 
-README is consumer-facing copy for the Community plugin page. Lead with useful
-outcomes and examples, use plain language and concise paragraphs, and preserve
+README is consumer-facing copy for the Community plugin page. Use at most 30
+prose sentences (bullets excluded), per the user's
+November 15 revision. Keep bullets concise rather than using them to hide an
+operating manual. Do not add a privacy-notice section or explain obvious
+clipboard button behavior; retain practical destination and icon-storage details.
+Lead with useful outcomes and examples, use plain language and concise paragraphs, and preserve
 the author's voice. Let self-explanatory controls explain themselves; focus on
 surprising behavior, practical platform limits and required privacy disclosures.
 Verify suspected factual problems against implementation or authoritative sources.
