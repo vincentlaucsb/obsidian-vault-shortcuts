@@ -5,7 +5,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig(
   globalIgnores([
     'node_modules/**', 'main.js', 'esbuild.config.mjs', 'package.json',
-    'package-lock.json', 'tsconfig.json',
+    'package-lock.json', 'tsconfig.json', '.test-build/**',
   ]),
   ...obsidianmd.configs.recommended,
   {
@@ -18,5 +18,13 @@ export default defineConfig(
       },
     },
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
+  },
+  {
+    files: ['src/ShortcutOptionsModal.ts'],
+    rules: {
+      // URI is the standard protocol acronym in the approved UI. Preserve its
+      // capitalization while continuing to check every label for sentence case.
+      'obsidianmd/ui/sentence-case': ['warn', { acronyms: ['URI', 'ID', 'URL', 'CLI', 'PNG', 'JPEG', 'ICO'], enforceCamelCaseLower: true }],
+    },
   },
 );

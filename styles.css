@@ -17,3 +17,170 @@
   overflow-y: auto;
   margin-bottom: var(--size-4-2);
 }
+.vault-shortcuts-icon-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.vault-shortcuts-icon-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.vault-shortcuts-icon-control {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-icon-control > .setting-item-control {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-icon-control button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+
+.vault-shortcuts-stacked-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-4-3);
+}
+
+.vault-shortcuts-stacked-setting > .setting-item-info {
+  margin-inline-end: 0;
+}
+
+.vault-shortcuts-stacked-setting > .setting-item-control,
+.vault-shortcuts-settings-icon > .setting-item > .setting-item-control {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-stacked-setting button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+
+.vault-shortcuts-settings-icon {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.vault-shortcuts-settings-icon > .setting-item {
+  border-top: 0;
+  padding: 0;
+}
+
+.vault-shortcuts-settings-icon > .setting-item > .setting-item-info {
+  display: none;
+}
+
+.vault-shortcuts-settings-icon > .vault-shortcuts-icon-status {
+  margin: 0;
+  text-align: start;
+}
+
+.vault-shortcuts-uri-modal {
+  width: min(760px, 95vw);
+  max-height: 90vh;
+}
+
+.vault-shortcuts-uri-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 78vh;
+}
+
+.vault-shortcuts-uri-content > :not(.vault-shortcuts-uri-panels) {
+  flex-shrink: 0;
+}
+
+.vault-shortcuts-uri-panels {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vault-shortcuts-uri-panels > [hidden] {
+  display: none;
+}
+
+.vault-shortcuts-uri-content .vault-shortcuts-uri-tabs {
+  padding-block: var(--size-4-2);
+}
+
+.vault-shortcuts-uri-tabs .setting-item-info {
+  display: none;
+}
+
+.vault-shortcuts-uri-tabs .setting-item-control {
+  justify-content: flex-start;
+  flex-grow: 1;
+}
+
+.vault-shortcuts-uri-tabs [role="tab"][aria-selected="true"] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.vault-shortcuts-uri-content .setting-item {
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+}
+
+.vault-shortcuts-uri-content .setting-item-control {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.vault-shortcuts-uri-content textarea {
+  min-width: min(300px, 65vw);
+  max-width: 100%;
+}
+
+.vault-shortcuts-uri-content .vault-shortcuts-uri-preview {
+  width: 100%;
+  min-height: 5em;
+  font-family: var(--font-monospace);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  resize: none;
+  overflow-y: auto;
+}
+
+.vault-shortcuts-icon-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  margin-inline-end: var(--size-4-2);
+}
+
+.vault-shortcuts-uri-effect {
+  color: var(--text-warning);
+}
+
+.vault-shortcuts-uri-validation {
+  color: var(--text-error);
+}
+
+.vault-shortcuts-uri-content .vault-shortcuts-uri-footer {
+  background: var(--background-primary);
+  justify-content: flex-end;
+  padding-block: var(--size-4-3);
+  z-index: 1;
+}
+
+.vault-shortcuts-uri-origin {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

@@ -11,3 +11,8 @@ export function readContextMenuOptions(data: unknown): ContextMenuOptions {
     tags: typeof data === 'object' && data !== null && 'tags' in data && typeof data.tags === 'boolean' ? data.tags : true,
   };
 }
+
+export function readDefaultIcon(data: unknown): string | undefined {
+  return typeof data === 'object' && data !== null && 'defaultIcon' in data &&
+    typeof data.defaultIcon === 'string' && data.defaultIcon.length > 0 ? data.defaultIcon : undefined;
+}
