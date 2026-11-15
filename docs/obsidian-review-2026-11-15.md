@@ -33,6 +33,7 @@ hashes are in ignored `.test-build/obsidian-review/complete.json`.
 | Windows concurrent icon reuse fails with EBUSY | Existing bounded verification loop now retries transient busy metadata/read failures. Persistent busy and other errors still surface; mismatched assets are never overwritten. Deterministic boundary tests cover recovery, exhaustion, access denial, mismatch and cleanup. |
 | Stale README folder/heading and installation claims | Corrected; documented explicit Copy URI clipboard writes. Maintainer build/release instructions moved to docs/DEVELOPMENT.md. |
 | Missing compatibility map | Added versions.json using verified historical tag minima and the current 1.15.0 minimum. Release workflow and tests check the current entry. |
+| CI action-runtime deprecation | Updated checkout and setup-node from v4 to the documented v7 releases in both workflows. The project continues to build with Node 22. |
 
 The public scorecard also reports successful network-pattern, dependency,
 obfuscation and reproducible-build checks for the published release. Those do
@@ -62,6 +63,9 @@ official recommended checks. No rule was weakened.
 - Bundle inspection found only Obsidian/Node external imports and no fixture or
   debug markers. No third-party runtime package is bundled by this change.
 - Diff formatting and local documentation links were checked.
+- The first pushed commit passed Linux CI. Its action-runtime deprecation
+  annotation prompted the workflow follow-up; the ubuntu-latest migration
+  notice is informational and does not indicate a failing check.
 - Native macOS/Linux behavior remains experimental. Automated Windows UI tests
   do not prove native picker visibility, icon display or shortcut launching.
 
