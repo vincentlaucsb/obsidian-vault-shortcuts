@@ -13,6 +13,11 @@ labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
 
+**1.0.0 publication (November 15, 2026):** the user authorized publishing the
+1.0.0 release and verifying that the hosted GitHub artifact-attestation warning
+clears. Use the checked release workflow and verify all downloaded assets;
+compare the refreshed directory review with this release before claiming clearance.
+
 **README rewrite (November 15, 2026):** the user requested a readable consumer
 README capped at 30 prose sentences, excluding bullets, and removal of the
 privacy notice and obvious clipboard explanations. Lead with installation,

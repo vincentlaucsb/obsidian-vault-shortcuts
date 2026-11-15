@@ -8,7 +8,7 @@ Windows users can also create Start menu shortcuts.
 ## Get started
 
 Install **Vault Shortcuts** from Obsidian’s Community plugins browser and enable it.
-This README describes the upcoming **1.0.0** release, which requires **Obsidian desktop 1.15.0+**.
+Version **1.0.0** requires **Obsidian desktop 1.15.0+**.
 
 - **Windows:** supported, with Desktop and Start menu destinations
 - **macOS and Linux:** experimental; native appearance and launching are not yet verified
