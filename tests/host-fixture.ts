@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { IconSelection } from '../src/IconControl';
+import type { IconSelection } from '../src/icons/image';
 import type { ShortcutDestination } from '../src/shortcuts/WindowsShortcutCreator';
 import type { ShortcutOptions } from '../src/shortcuts/IShortcutCreator';
 import { iconControls } from './icon-control-fixture';
@@ -58,6 +58,7 @@ class Workspace {
   getActiveViewOfType(): MarkdownView { return this.active; }
 }
 export class Plugin {
+  readonly manifest = { dir: undefined };
   readonly app = {
     workspace: new Workspace(),
     vault: {
@@ -67,6 +68,10 @@ export class Plugin {
       getRoot(): TFolder { return this.root; },
       getName: () => 'Test vault',
       getAbstractFileByPath(path: string): TFile | TFolder | undefined { return this.files.get(path); },
+      getFolderByPath(path: string): TFolder | undefined {
+        const file = this.files.get(path);
+        return file instanceof TFolder ? file : undefined;
+      },
     },
     metadataCache: {
       entries: new Map<TFile, TestMetadata>(),
@@ -116,6 +121,7 @@ interface TestPlugin extends Plugin {
   defaultIcon: string | undefined;
   saveContextMenuOption(key: 'desktop' | 'startMenu' | 'tags', enabled: boolean): Promise<void>;
   saveDefaultIcon(selection: IconSelection): Promise<void>;
+  saveSendToFolder(value: string): Promise<void>;
   createShortcut(file?: TFile, target?: ShortcutDestination, otherVaultName?: string, icon?: IconSelection): Promise<boolean>;
   openPresetOptions(request: ShortcutRequest, target: ShortcutDestination, initialIcon: IconSelection, selectedVault?: string): void;
 }
@@ -213,6 +219,21 @@ export async function runScenarios(createPlugin: () => TestPlugin): Promise<void
   const icons = createPlugin(); await icons.onload();
   const defaultPath = 'C:\\Icons\\default.ico';
   const overridePath = 'C:\\Icons\\override.ico';
+  const retrying = createPlugin(); await retrying.onload();
+  retrying.app.vault.files.set(folder.path, folder);
+  const saveError = new Error('Settings write failed');
+  const saveData = retrying.saveData.bind(retrying);
+  retrying.saveData = () => {
+    retrying.saveData = saveData;
+    return Promise.reject(saveError);
+  };
+  await Promise.all([
+    assert.rejects(retrying.saveContextMenuOption('desktop', false), saveError),
+    retrying.saveDefaultIcon({ mode: 'custom', path: defaultPath }),
+    retrying.saveSendToFolder(folder.path),
+  ]);
+  assert.deepEqual(retrying.data, { desktop: true, startMenu: true, tags: true, defaultIcon: defaultPath, sendToFolder: folder.path },
+    'A failed save leaves the previous value and allows queued settings to persist together');
   await Promise.all([
     icons.saveDefaultIcon({ mode: 'custom', path: defaultPath }),
     icons.saveContextMenuOption('desktop', false),

@@ -21,7 +21,7 @@ void test('production URI dialog: active fields, preview/copy, bound contexts an
       },
       bundle: true, platform: 'node', format: 'cjs', outfile: output,
       plugins: [{ name: 'native-controls', setup(context) {
-        context.onResolve({ filter: /^obsidian$|^\.\/IconControl$|^\.\/vaultDiscovery$/ }, () => ({ path: fixture }));
+        context.onResolve({ filter: /^obsidian$|^\.\/icons\/IconControl$|^\.\/vaultDiscovery$/ }, () => ({ path: fixture }));
       } }],
     });
     const loaded: unknown = createRequire(import.meta.url)(output);

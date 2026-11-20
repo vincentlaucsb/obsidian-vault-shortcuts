@@ -1,6 +1,7 @@
-import { addIconControl } from './IconControl';
-import type { IconSelection } from './IconControl';
-import { App, Modal, Notice, Platform, Setting } from 'obsidian';
+import { addIconControl } from './icons/IconControl';
+import type { IconSelection } from './icons/image';
+import { App, Modal, Notice, Setting } from 'obsidian';
+import { addDestinationControl } from './destinationControl';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 
 export class TagShortcutModal extends Modal {
@@ -42,11 +43,7 @@ export class TagShortcutModal extends Modal {
       selected = this.tags.find(tag => tag === list.value);
       updateButton();
     };
-    if (Platform.isWin) {
-      new Setting(this.contentEl).setName('Destination').addDropdown(dropdown => dropdown
-        .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue('desktop')
-        .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
-    }
+    addDestinationControl(this.contentEl, target, value => { target = value; });
     const importing = addIconControl(this.contentEl, icon, value => { icon = value; return Promise.resolve(); }, this.defaultIcon);
     new Setting(this.contentEl).addButton(button => {
       updateButton = () => { button.setDisabled(busy || !selected); updateOptions(); };

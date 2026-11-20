@@ -16,3 +16,8 @@ export function readDefaultIcon(data: unknown): string | undefined {
   return typeof data === 'object' && data !== null && 'defaultIcon' in data &&
     typeof data.defaultIcon === 'string' && data.defaultIcon.length > 0 ? data.defaultIcon : undefined;
 }
+
+export function readSendToFolder(data: unknown): string {
+  return typeof data === 'object' && data !== null && 'sendToFolder' in data && typeof data.sendToFolder === 'string' ?
+    data.sendToFolder : '';
+}

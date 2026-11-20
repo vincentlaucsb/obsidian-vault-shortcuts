@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { copyFile, lstat, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, posix, win32 } from 'node:path';
 import { homedir } from 'node:os';
 import { setTimeout } from 'node:timers/promises';
@@ -22,6 +22,17 @@ export function validatePosixIconPath(path: string): void {
   if (!posix.isAbsolute(path) || Array.from(path).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
     throw new Error('The icon must have an absolute filesystem path without control characters.');
   }
+}
+
+export async function readIcon(path: string, platform: IconPlatform): Promise<Buffer> {
+  const windows = platform === 'windows';
+  if (windows) validateIconPath(path);
+  else validatePosixIconPath(path);
+  if ((await stat(path)).size > MAX_IMAGE_BYTES) throw new Error('Icon file is too large. Choose another image.');
+  const data = await readFile(path);
+  if (windows) validateIco(data);
+  else validatePngIcon(data);
+  return data;
 }
 
 export function getIconDirectory(platform: IconPlatform = 'windows', home = homedir()): string {

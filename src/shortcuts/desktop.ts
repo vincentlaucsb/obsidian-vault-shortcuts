@@ -21,10 +21,14 @@ export async function validateDesktop(desktop: string, home?: string, label = 'D
   return desktop;
 }
 
-export function windowsPowerShellPath(): string {
+export function windowsSystemDirectory(): string {
   const root = process.env.SystemRoot;
-  if (!root || !isAbsolute(root)) throw new Error('Cannot locate Windows PowerShell.');
-  return join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  if (!root || !isAbsolute(root)) throw new Error('Cannot locate the Windows system directory.');
+  return join(root, 'System32');
+}
+
+export function windowsPowerShellPath(): string {
+  return join(windowsSystemDirectory(), 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 }
 
 export function getWindowsDesktop(): Promise<string> {
@@ -35,14 +39,18 @@ export function getWindowsStartMenu(): Promise<string> {
   return getWindowsFolder('Programs');
 }
 
-async function getWindowsFolder(folder: 'DesktopDirectory' | 'Programs'): Promise<string> {
+export function getWindowsSendTo(): Promise<string> {
+  return getWindowsFolder('SendTo');
+}
+
+async function getWindowsFolder(folder: 'DesktopDirectory' | 'Programs' | 'SendTo'): Promise<string> {
   // Fixed code only: no vault names, note paths or URLs are interpolated.
   const script = '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); ' +
     `[Environment]::GetFolderPath([Environment+SpecialFolder]::${folder})`;
   return validateDesktop(await queryDesktop(
     windowsPowerShellPath(),
     ['-NoProfile', '-NonInteractive', '-Command', script],
-  ), undefined, folder === 'Programs' ? 'Start menu Programs' : 'Desktop');
+  ), undefined, { DesktopDirectory: 'Desktop', Programs: 'Start menu Programs', SendTo: 'Send to' }[folder]);
 }
 
 export async function getMacOSDesktop(): Promise<string> {

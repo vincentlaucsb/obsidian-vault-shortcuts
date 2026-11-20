@@ -1,6 +1,6 @@
 # Vault Shortcuts — product and implementation plan
 
-Updated November 15, 2026. This is the consolidated plan for the feasibility
+Updated November 19, 2026. This is the consolidated plan for the feasibility
 discussion, product scope, platform findings, existing proof of concept, and next
 steps. The user has now authorized implementation by a subagent, a parent code
 review, and a separate subagent review, iterating on high-priority findings until
@@ -12,6 +12,24 @@ and the official type-aware lint checks before submission. User-facing button
 labels will use sentence case (**Create shortcut**), preserving the agreed flow.
 
 ## Problem and decisions
+
+**Windows Send to image capture (November 18, 2026):** add explicit Windows
+Explorer entries that copy a selected image into a new note or append an embed
+to today's daily note. Bind each installation to the vault where it was enabled.
+Use an existing vault-relative folder for new notes and the core Daily notes
+settings for daily captures. The device-local launcher stages a request and
+asks Windows to open or focus the registered vault by its absolute path. The
+plugin writes the image and note using Vault APIs then activates the receiving
+note. The existing Settings action repairs earlier generated launchers.
+See [Windows Send to](windows-send-to.md) for setup and platform behavior.
+
+**1.1.0 agent integration (November 17, 2026):** install equivalent opt-in
+project skills for Obsidian Copilot, Claude Code and Codex. Use a narrow
+plugin-hosted interface for help, preview and creation. The November 19
+revision uses Obsidian's URI protocol and a private JSON handoff instead of a
+local server. Copilot is the primary use case, and an agent request may open or
+focus Obsidian. Preserve user skills and local installation ownership. See the
+[design and verification record](agent-integration.md).
 
 **1.0.0 publication (November 15, 2026):** the user authorized publishing the
 1.0.0 release and verifying that the hosted GitHub artifact-attestation warning
@@ -795,6 +813,11 @@ Current structure (implementation under `src/`, matching csvzall):
 src/
   main.ts
   TagShortcutModal.ts       Native tag picker and destination controls
+  destinationControl.ts    Windows destination dropdown for shortcut dialogs
+  icons/
+    IconControl.ts          Owning-window picker, clipboard and preview
+    image.ts                Icon selection and image conversion shared with agents
+    assets.ts               Icon validation, device-local storage and reads
   shortcuts/
     IShortcutCreator.ts
     ShortcutCreator.ts
@@ -802,6 +825,7 @@ src/
     MacOSShortcutCreator.ts
     LinuxShortcutCreator.ts
     desktop.ts              Platform Desktop discovery
+    macIcon.ts              Finder icon preflight and application to a new shortcut
     uri.ts
     files.ts                Filename/label helpers, serializers, exclusive write
 tests/                      TypeScript tests and host fixture

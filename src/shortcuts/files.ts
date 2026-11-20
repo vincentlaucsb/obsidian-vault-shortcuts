@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { buildObsidianUri, buildTagSearchUri } from './uri';
 import type { ShortcutOptions } from './IShortcutCreator';
-import { validateIconPath, validatePosixIconPath } from '../icons';
+import { validateIconPath, validatePosixIconPath } from '../icons/assets';
 import { buildShortcutUri } from './requests';
 import type { ShortcutContext, ShortcutRequest } from './requests';
 
@@ -47,8 +47,7 @@ export async function writeShortcut(
   if (!isAbsolute(desktop)) throw new Error('Desktop must be an absolute path.');
   const label = shortcutLabel(vaultName, notePath);
   const uri = buildObsidianUri(vaultName, notePath);
-  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
-  return writeShortcutContent(desktop, format, label, content, format === 'url' && options?.iconPath !== undefined);
+  return writeShortcutUri(desktop, format, label, uri, options);
 }
 
 export async function writeRequestShortcut(
@@ -57,6 +56,12 @@ export async function writeRequestShortcut(
 ): Promise<string> {
   if (!label.trim()) throw new Error('Enter a shortcut name.');
   const uri = buildShortcutUri(request, context);
+  return writeShortcutUri(directory, format, label, uri, options);
+}
+
+function writeShortcutUri(
+  directory: string, format: 'url' | 'desktop', label: string, uri: string, options?: ShortcutOptions,
+): Promise<string> {
   const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
   return writeShortcutContent(directory, format, label, content, format === 'url' && options?.iconPath !== undefined);
 }
@@ -88,6 +93,5 @@ export async function writeTagShortcut(
 ): Promise<string> {
   const label = `${vaultName} - Tag ${tag.slice(1)}`;
   const uri = buildTagSearchUri(vaultName, tag);
-  const content = format === 'url' ? serializeUrl(uri, options) : serializeDesktopLink(label, uri, options);
-  return writeShortcutContent(directory, format, label, content, format === 'url' && options?.iconPath !== undefined);
+  return writeShortcutUri(directory, format, label, uri, options);
 }

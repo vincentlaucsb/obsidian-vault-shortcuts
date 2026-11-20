@@ -1,7 +1,8 @@
 import { App, Modal, Notice, Platform, Setting } from 'obsidian';
 import type { ButtonComponent, TextComponent } from 'obsidian';
-import { addIconControl } from './IconControl';
-import type { IconSelection } from './IconControl';
+import { addIconControl } from './icons/IconControl';
+import type { IconSelection } from './icons/image';
+import { addDestinationControl } from './destinationControl';
 import type { ShortcutDestination } from './shortcuts/WindowsShortcutCreator';
 import { buildShortcutUri, contextVault, normalizeVaultId } from './shortcuts/requests';
 import type { ShortcutContext, ShortcutRequest } from './shortcuts/requests';
@@ -122,9 +123,7 @@ export class ShortcutOptionsModal extends Modal {
       input.inputEl.setAttribute('data-uri-field', 'label');
       input.onChange(value => { nameEdited = true; label = value; refresh(); });
     });
-    if (Platform.isWin) new Setting(generalPanel).setName('Destination').addDropdown(dropdown => dropdown
-      .addOption('desktop', 'Desktop').addOption('start-menu', 'Start menu').setValue(target)
-      .onChange(value => { target = value === 'start-menu' ? 'start-menu' : 'desktop'; }));
+    addDestinationControl(generalPanel, target, value => { target = value; });
     {
       const setting = new Setting(generalPanel).setName('Shortcut icon');
       const custom = generalPanel.createDiv();

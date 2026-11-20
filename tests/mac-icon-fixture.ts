@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { transparentPng } from './png-fixture';
 
+export { copyFile, lstat, mkdir, unlink, writeFile } from 'node:fs/promises';
+
 const png = transparentPng(512);
 let fail = false;
 let ended = false;

@@ -93,8 +93,9 @@ Source: [Official plugin self-critique checklist](https://docs.obsidian.md/oo/pl
 - Scope CSS to the plugin; avoid inline styling and changes to core styles.
 - Keep startup light; defer layout-dependent work until layout readiness. Avoid
   vault-wide scans for a known path. Remove debug logging and keep a lockfile.
-- Do not modify note contents for this feature. If future authorized scope needs
-  editing, use Editor/Vault processing/frontmatter APIs and respect trash settings.
+- Shortcut creation does not modify notes. The opt-in Windows Send to capture
+  writes the selected image and its embed using Vault APIs, including `process`
+  for existing daily notes. Preserve prior contents and the source image.
 
 ### Official static checks and version-sensitive APIs
 
@@ -120,7 +121,8 @@ These are local engineering decisions, not claims that Obsidian mandates this de
 
 - Follow csvzall's source layout: all plugin implementation belongs under `src/`,
   with `src/main.ts` as the entry point and shortcut creators/helpers in
-  `src/shortcuts/`. Keep tests and fixtures in `tests/`; keep design documents,
+  `src/shortcuts/`. Keep the shared icon control, image conversion and asset
+  handling in `src/icons/`. Keep tests and fixtures in `tests/`; keep design documents,
   plans, research and preview images under `docs/` (images in `docs/images/`).
   Keep README, AGENTS.md, LICENSE, manifest and tooling configuration at the
   repository root. Update relative links when moving documents. Do not add runtime
@@ -262,15 +264,33 @@ These are local engineering decisions, not claims that Obsidian mandates this de
   accept a different vault or silently fall back to name while ID mode is selected.
 - Preserve existing files: exclusive creation, retry collisions with suffixes,
   bounded retries, and report errors. Do not execute created shortcuts automatically.
+- Agent integration (1.1.0) installs equivalent vault skills for Copilot, Claude
+  Code and Codex via explicit Enable or repair, Test connection and Remove
+  actions. Use a private, single-use JSON handoff and Obsidian's URI protocol,
+  with no dedicated socket or filesystem watcher. Bind requests to the vault
+  and actual active plugin directory, and keep ownership device-local.
+  Preserve edits and linked skills. Plugin startup only registers the handler.
+  Obsidian Copilot is the primary use case. A terminal agent may open or
+  foreground Obsidian when handing off a request.
+  Use shared URI validation, icon handling and platform creators. Report
+  discovery and execution verification separately for each client.
+- Windows Send to installs two vault-specific Explorer `.lnk` entries only from
+  Settings. Resolve the configured SendTo folder, stage requests locally using
+  a fixed Windows Script Host bridge, and open the registered vault by its path.
+  Consume requests from the bound vault and activate the receiving note after
+  a successful import. Upgrade only the earlier generated launcher on repair.
+  Keep the new-note folder configurable and use the documented CLI for Daily
+  notes settings and creation. Never overwrite a note, attachment or changed
+  menu entry. Keep generated launcher code small, reviewable and TypeScript-checked.
 - Resolve the actual platform Desktop; do not silently write to a guessed directory.
   Treat Obsidian vault paths and native OS filesystem paths separately; do not run
   native Desktop paths through vault path normalization.
 - No user-derived text in shell code. Use fixed executables/argument arrays for
   necessary system queries, with hidden Windows execution and bounded timeouts.
   Do not source shell configuration, elevate, or change URI associations/trust flags.
-- Disclose Desktop access and the Windows discovery subprocess in README. Preserve
-  no-overwrite behavior even when multiple actions run at once. Do not read note
-  contents, delete shortcuts on unload, or create shortcut-tracking databases.
+- Disclose Desktop and SendTo access and Windows subprocesses in README. Preserve
+  no-overwrite behavior even when multiple actions run at once. Do not read notes
+  to create shortcuts, delete shortcuts on unload, or create shortcut-tracking databases.
 - Initial formats: Windows/Mac `.url`; Linux `.desktop` with `Type=Link` and `URL=`.
   Windows also supports a user-requested Start Menu destination: `.url` files in
   the current user's configured Programs folder. Keep Desktop the default and

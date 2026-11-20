@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { IconSelection } from '../src/IconControl';
+import type { IconSelection } from '../src/icons/image';
 
 export const Platform = { isWin: true };
 export const notices: string[] = [];

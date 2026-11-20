@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { launchObsidian, repository } from './obsidian';
 import type { ObsidianHost } from './obsidian';
 
-interface Fixtures { host: ObsidianHost; colorMode: 'dark' | 'light' }
+interface Fixtures { host: ObsidianHost; colorMode: 'dark' | 'light'; agentVault: boolean; sendToVault: boolean }
 declare global {
   interface Window { fixtureClipboard: { text: string; reads: number; png?: number[]; denied?: boolean } }
 }
@@ -28,9 +28,11 @@ function installClipboard(): void {
 
 export const test = base.extend<Fixtures>({
   colorMode: ['dark', { option: true }],
-  host: async ({ colorMode, browserName }, use, info) => {
+  agentVault: [false, { option: true }],
+  sendToVault: [false, { option: true }],
+  host: async ({ colorMode, browserName, agentVault, sendToVault }, use, info) => {
     if (browserName !== 'chromium') throw new Error('Obsidian requires Chromium.');
-    const host = await launchObsidian(colorMode);
+    const host = await launchObsidian(colorMode, agentVault, sendToVault);
     const context = host.page.context();
     try { await host.page.evaluate(installClipboard); await use(host); }
     finally {

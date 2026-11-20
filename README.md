@@ -8,7 +8,7 @@ Windows users can also create Start menu shortcuts.
 ## Get started
 
 Install **Vault Shortcuts** from Obsidian’s Community plugins browser and enable it.
-Version **1.0.0** requires **Obsidian desktop 1.15.0+**.
+Version **1.1.0** requires **Obsidian desktop 1.15.0+**.
 
 - **Windows:** supported, with Desktop and Start menu destinations
 - **macOS and Linux:** experimental; native appearance and launching are not yet verified
@@ -55,6 +55,23 @@ Icon copies are stored locally outside your vault and remain after uninstall so 
 - **Linux:** `$XDG_DATA_HOME/vault-shortcuts/icons`, or `~/.local/share/vault-shortcuts/icons`
 
 Reselect images on another computer; copying a macOS shortcut can lose its Finder icon metadata.
+
+## Send an image from Windows Explorer
+
+Under **Settings → Vault Shortcuts → Windows Send to**, choose **Install Send to entries** and set the folder for new notes.
+On Windows 11, right-click an image in Explorer and choose **Show more options → Send to** to create a new note or append to today’s daily note.
+Both actions copy the image into the vault, preserve the original, and open the receiving note.
+
+- Daily capture uses the vault’s Daily notes folder and template and requires the enabled Obsidian CLI and Daily notes core plugin.
+- The menu entries live in your Windows **SendTo** folder and use Windows Script Host with a local queue under `%LOCALAPPDATA%\VaultShortcuts\SendTo`.
+- [Supported images, setup and removal](docs/windows-send-to.md)
+
+## Ask an agent
+
+Under **Settings → Vault Shortcuts → Agent integration**, select **Enable or repair** to install vault skills for Copilot, Claude Code and Codex.
+Start your agent at the vault root and ask for a shortcut to a note, search or capture action.
+An agent request can open or focus Obsidian and uses temporary files in `~/.vault-shortcuts-agent` outside the vault to exchange the request and result.
+[Agent setup and examples](docs/agent-integration.md)
 
 ## A few things to know
 

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { getIconDirectory, PNG_ICON_SIZE, storePngIcon, validatePngIcon } from '../src/icons';
+import { getIconDirectory, PNG_ICON_SIZE, storePngIcon, validatePngIcon } from '../src/icons/assets';
 import { serializeDesktopLink, writeShortcut, writeTagShortcut, writeRequestShortcut } from '../src/shortcuts/files';
 import { macIconArguments } from '../src/shortcuts/macIconBridge';
 import { transparentPng } from './png-fixture';

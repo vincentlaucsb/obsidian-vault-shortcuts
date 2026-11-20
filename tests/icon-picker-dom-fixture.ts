@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { setImmediate } from 'node:timers/promises';
-import type { IconSelection } from '../src/IconControl';
+import type { IconSelection } from '../src/icons/image';
 
 const elements: ElementFixture[] = [];
 const notices: string[] = [];
@@ -86,9 +86,6 @@ export class Notice { constructor(message: string) { notices.push(message); } }
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 export const ICON_SIZES = [16, 32, 48, 256];
 export const PNG_ICON_SIZE = 512;
-export function validateIconPath(): void {}
-export function validatePosixIconPath(): void {}
-export function validatePngIcon(): void {}
 export function validateIco(): void {}
 export function createIco(frames: readonly { size: number; png: Uint8Array }[]): Buffer {
   assert.deepEqual(frames.map(frame => frame.size), ICON_SIZES);
@@ -99,8 +96,7 @@ export function storePngIcon(_data: Uint8Array, platform: 'macos' | 'linux'): Pr
   imports++;
   return Promise.resolve(platform === 'macos' ? '/Users/test/Icons/chosen.png' : '/home/test/Icons/chosen.png');
 }
-export function stat(): Promise<{ size: number }> { return Promise.resolve({ size: 3 }); }
-export function readFile(): Promise<Buffer> { return Promise.resolve(Buffer.from('ico')); }
+export function readIcon(): Promise<Buffer> { return Promise.resolve(Buffer.from('ico')); }
 
 type ControlFactory = (container: ElementFixture, initial: IconSelection,
   change: (selection: IconSelection) => Promise<void>, defaultPath?: string, allowDefault?: boolean, allowStandard?: boolean) => () => boolean;

@@ -14,11 +14,11 @@ void test('icon deduplication retries busy publication reads and preserves other
   try {
     const output = join(directory, 'storage.cjs');
     await build({ stdin: {
-      contents: 'import {storePngIcon} from "./src/icons"; import {runIconStorageScenarios} from "./tests/icon-storage-fixture"; export const run = (directory: string): Promise<void> => runIconStorageScenarios(storePngIcon, directory);',
+      contents: 'import {storePngIcon} from "./src/icons/assets"; import {runIconStorageScenarios} from "./tests/icon-storage-fixture"; export const run = (directory: string): Promise<void> => runIconStorageScenarios(storePngIcon, directory);',
       resolveDir: resolve('.'), loader: 'ts',
     }, bundle: true, platform: 'node', format: 'cjs', outfile: output, plugins: [{ name: 'icon-storage-boundary', setup(context) {
       context.onResolve({ filter: /^node:fs\/promises$/ }, args => {
-        if (args.importer.endsWith('icons.ts')) return { path: resolve('tests/icon-storage-fixture.ts') };
+        if (args.importer.endsWith('assets.ts')) return { path: resolve('tests/icon-storage-fixture.ts') };
         return undefined;
       });
     } }] });

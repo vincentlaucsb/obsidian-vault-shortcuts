@@ -18,7 +18,9 @@ void test('macOS icon application: native argv, bounded process, preflight and p
       resolveDir: resolve('.'), loader: 'ts',
     }, bundle: true, platform: 'node', format: 'cjs', outfile: output, plugins: [{ name: 'native-mac-boundary', setup(context) {
       context.onResolve({ filter: /^node:fs\/promises$|^node:child_process$/ }, args => {
-        if (args.importer.endsWith('macIcon.ts')) return { path: resolve('tests/mac-icon-fixture.ts') };
+        if (args.importer.endsWith('macIcon.ts') || args.importer.endsWith('assets.ts')) {
+          return { path: resolve('tests/mac-icon-fixture.ts') };
+        }
         return undefined;
       });
     } }] });

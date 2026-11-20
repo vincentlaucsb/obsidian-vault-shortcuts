@@ -1,15 +1,14 @@
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
-import { access, readFile, stat } from 'node:fs/promises';
-import { MAX_IMAGE_BYTES, validatePngIcon, validatePosixIconPath } from '../icons';
+import { access } from 'node:fs/promises';
+import { readIcon, validatePosixIconPath } from '../icons/assets';
 import { macIconArguments } from './macIconBridge';
+import { ShortcutIconError } from './IShortcutCreator';
 
 /** Apply only to a new, exclusively created shortcut; existing files are untouched. */
 export async function createMacShortcutWithIcon(create: () => Promise<string>, iconPath?: string): Promise<string> {
   if (iconPath === undefined) return create();
-  validatePosixIconPath(iconPath);
-  if ((await stat(iconPath)).size > MAX_IMAGE_BYTES) throw new Error('Icon image is too large. Choose another image.');
-  validatePngIcon(await readFile(iconPath));
+  await readIcon(iconPath, 'macos');
   await access('/usr/bin/osascript', constants.X_OK);
   const destination = await create();
   validatePosixIconPath(destination);
@@ -22,8 +21,7 @@ export async function createMacShortcutWithIcon(create: () => Promise<string>, i
       child.stdin?.end();
     });
   } catch (error: unknown) {
-    throw new Error(`Shortcut created at ${destination}, but its custom icon could not be applied. ` +
-      `The shortcut was kept. ${error instanceof Error ? error.message : String(error)}`);
+    throw new ShortcutIconError(destination, error instanceof Error ? error.message : String(error));
   }
   return destination;
 }

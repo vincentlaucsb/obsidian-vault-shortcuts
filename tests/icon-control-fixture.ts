@@ -1,4 +1,4 @@
-import type { IconSelection } from '../src/IconControl';
+import type { IconSelection } from '../src/icons/image';
 
 export interface IconControl {
   initial: IconSelection;

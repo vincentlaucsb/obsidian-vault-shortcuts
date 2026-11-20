@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import type { IconSelection } from '../src/IconControl';
+import type { IconSelection } from '../src/icons/image';
 import type { ShortcutContext, ShortcutRequest } from '../src/shortcuts/requests';
 import type { ShortcutDestination } from '../src/shortcuts/WindowsShortcutCreator';
 import { button, clipboardReads, copied, field, icons, Modal, Platform, Setting } from './uri-modal-fixture';

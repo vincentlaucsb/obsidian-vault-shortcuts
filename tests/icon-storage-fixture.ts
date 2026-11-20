@@ -3,7 +3,7 @@ import { lstat as nativeLstat, readFile as nativeReadFile, readdir, writeFile as
 import { join } from 'node:path';
 import { transparentPng } from './png-fixture';
 
-export { copyFile, mkdir, unlink, writeFile } from 'node:fs/promises';
+export { copyFile, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 
 let failure = new Error('Unconfigured filesystem failure');
 let remaining = 0;

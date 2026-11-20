@@ -38,6 +38,26 @@ vault, home, roaming/local app-data directories and icon store. It copies only
 the current `main.js`, manifest and CSS, then writes fictional Markdown/CSV
 fixtures. It does not read or copy personal vaults, settings or vault registries.
 
+The agent test uses an isolated home, a nondefault configuration folder
+and synthetic Desktop and Start menu Programs folders. It runs the installed
+skill's PowerShell instructions with an empty PATH. It captures the generated
+URI and uses the synthetic renderer's desktop protocol dispatcher, since the
+Windows launcher uses a per-user pipe shared across profiles. Only the two
+fixed Known Folder queries return fixture paths. The test exercises the real
+plugin handler and verifies result files, duplicate names, icon encoding,
+and preservation of the target note.
+
+The Windows Send to test uses detached Settings and a synthetic SendTo folder.
+It permits the exact Windows shortcut writer only for paths under that fixture,
+reads the resulting `.lnk` files with Windows Script Host and runs their launcher
+with a fictional image. It checks collision handling, preservation of source and
+daily-note contents, opening the receiving note, malformed input, repair and
+removal. The isolated host receives a vault-open URL directly at startup. The
+launcher test intercepts the global Windows protocol dispatch, and CLI replies
+are fixture-controlled. The test therefore does not exercise the Explorer menu
+click, Windows foreground activation, or a live connection to the Daily notes
+CLI.
+
 The version-specific bootstrap writes **its own** `obsidian.json` and synthetic
 vault ID metadata, enables only this plugin in that fresh profile's storage, and
 disables updates there. Renderer checks verify the actual vault folder, profile

@@ -16,12 +16,12 @@ void test('real icon control uses an attached popout picker, preserves cancellat
     const fixture = resolve('tests/icon-picker-dom-fixture.ts');
     await build({
       stdin: {
-        contents: 'import { addIconControl } from "./src/IconControl"; import { runPickerScenarios } from "./tests/icon-picker-dom-fixture"; export const run = () => runPickerScenarios(addIconControl);',
+        contents: 'import { addIconControl } from "./src/icons/IconControl"; import { runPickerScenarios } from "./tests/icon-picker-dom-fixture"; export const run = () => runPickerScenarios(addIconControl);',
         resolveDir: resolve('.'), loader: 'ts',
       },
       bundle: true, platform: 'node', format: 'cjs', outfile: output,
       plugins: [{ name: 'owner-window-dom', setup(context) {
-        context.onResolve({ filter: /^obsidian$|^\.\/icons$|^node:fs\/promises$/ }, () => ({ path: fixture }));
+        context.onResolve({ filter: /^obsidian$|^\.\/assets$/ }, () => ({ path: fixture }));
       } }],
     });
     const loaded: unknown = createRequire(import.meta.url)(output);

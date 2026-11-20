@@ -24,7 +24,7 @@ export function contextVault(context: ShortcutContext): string {
 
 /** Anchor the complete folder prefix; escape both regex and search delimiters. */
 export function folderSearchQuery(folder: string): string {
-  if (folder) relativePath(folder);
+  if (folder) validateVaultRelativePath(folder);
   const prefix = folder ? `${folder}/` : '';
   return `match-case:(path:/^${prefix.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}/)`;
 }
@@ -65,16 +65,24 @@ function filePath(value: string): string {
 
 function vaultPath(value: string): string {
   filePath(value);
-  return relativePath(value);
+  return validateVaultRelativePath(value);
 }
 
-function relativePath(value: string): string {
+export function validateVaultRelativePath(value: string): string {
   required(value, 'Vault-relative path');
   if (value.startsWith('/') || value.includes('\\') || /^[a-z]:/i.test(value) ||
       value.split('/').some(part => !part || part === '.' || part === '..')) {
     throw new Error('Use a file path relative to the vault, without parent-directory segments.');
   }
   return value;
+}
+
+export function folderNotePath(folder: string, name: string): string {
+  if (folder) validateVaultRelativePath(folder);
+  if (name.trim() && (/[\\/#]/.test(name) || name === '.' || name === '..')) {
+    throw new Error('Enter a note name without path separators, parent-directory segments or #.');
+  }
+  return `${folder ? `${folder}/` : ''}${name.trim() ? name : 'Untitled.md'}`;
 }
 
 function absolutePath(value: string): string {

@@ -10,11 +10,11 @@ test('native destination queries are blocked before plugin imports and cannot cr
 
 test('detached settings keep descriptions above wrapping button rows at narrow widths', async ({ host }) => {
   const settings = await openSettings(host);
-  await settings.setViewportSize({ width: 650, height: 900 });
+  await settings.setViewportSize({ width: 650, height: 1680 });
   const content = settings.locator('.vertical-tab-content');
   await expect(content.getByText('Create vault shortcut', { exact: true })).toBeVisible();
   const rows = content.locator('.vault-shortcuts-stacked-setting');
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(6);
   for (const row of await rows.all()) {
     const description = await row.locator(':scope > .setting-item-info').boundingBox();
     const controls = await row.locator(':scope > .setting-item-control').boundingBox();
@@ -122,7 +122,8 @@ test('detached image controls import through their own document and preserve sel
 test('other-vault manual selection stays fixed in More options when native discovery is unavailable', async ({ host }) => {
   const settings = await openSettings(host);
   await settings.getByRole('button', { name: 'Create shortcut to another vault', exact: true }).click();
-  await settings.locator('.modal input[type="text"]').fill('Kitchen Archive');
+  const otherVault = settings.locator('.modal').filter({ has: settings.locator('.modal-title', { hasText: 'Create shortcut to another vault' }) });
+  await otherVault.getByRole('textbox').fill('Kitchen Archive');
   await settings.getByRole('button', { name: 'More options…', exact: true }).click();
   const modal = settings.locator('.vault-shortcuts-uri-modal');
   await modal.getByRole('tab', { name: 'Advanced', exact: true }).click();
